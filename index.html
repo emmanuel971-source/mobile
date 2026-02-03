@@ -3147,7 +3147,7 @@ function showReturningUserWelcome(pseudo) {
     setTimeout(() => sakura.remove(), 6000);
   }
   
-  playZenBell();
+  playEnterSound();
   
 setTimeout(() => {
   console.log('⏰ Timeout atteint, fermeture overlay');
@@ -4960,6 +4960,7 @@ window.addEventListener('beforeunload', () => {
     );
   }
 });
+
 // ============================================================================
 // 🎵 SECTION 5 : SYSTÈME AUDIO
 // ============================================================================
@@ -5055,6 +5056,7 @@ function playNotes(notes, delays, type = 'sine', gainValue = 0.05) {
 // --- Effets sonores simples ---
 function playPopSound() {
   playSound(() => createOsc('triangle', 420, 0.15, 0.15));
+ 
 }
 
 function playTwinkle() {
@@ -5155,8 +5157,49 @@ function playQuestionSound() {
   audio.play().catch(err => console.log('Erreur son:', err));
 }
 
+function playValidationSound() {
+  if (!soundEnabled) return;
+  
+  const audio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/validation.mp3');
+  audio.volume = 0.1; // Ajustez le volume si besoin
+  audio.play().catch(err => console.log('Erreur son:', err));
+}
 
+function playEnterSound() {
+  if (!soundEnabled) return;
+  
+  const audio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/enter.mp3');
+  audio.volume = 0.4; // Ajustez le volume si besoin
+  audio.play().catch(err => console.log('Erreur son:', err));
+}
 
+function playOkSound() {
+  if (!soundEnabled) return;
+  
+  const audio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/ok.mp3');
+  audio.volume = 1; // Ajustez le volume si besoin
+  audio.play().catch(err => console.log('Erreur son:', err));
+}
+
+// Créer l'instance une seule fois au chargement
+const clicAudio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/clic.mp3');
+clicAudio.volume = 1;
+
+function playClicSound() {
+  if (!soundEnabled) return;
+  
+  // Rembobiner le son au début avant de le jouer
+  clicAudio.currentTime = 0;
+  clicAudio.play().catch(err => console.log('Erreur son:', err));
+}
+function playMenuClicSound() {
+  if (!soundEnabled) return;
+  
+  const audio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/menuclic.mp3');
+  audio.volume = 1; // Ajustez le volume si besoin
+  audio.play().catch(err => console.log('Erreur son:', err));
+}
+  
 function playMarioCoin() {
   playSound(() => playNotes([659.25, 1046.50], [0.1, 0.2]));
 }
@@ -6081,7 +6124,7 @@ function updateRevisionFeedback() {
         // Ajouter animation "pop" et son si on valide un nouveau caractère
         if (inputLength > romStart && c === charStart && !card.classList.contains("pop-animation")) {
           card.classList.add("pop-animation");
-          playPopSound();
+          playClicSound();
           setTimeout(() => card.classList.remove("pop-animation"), 300);
         }
       }
@@ -6217,7 +6260,7 @@ openRevisionFlashcard(
 
         if (isCorrect) {
          
-          playZenBell();
+          playValidationSound();
         } else {
         
           playSoftError();
@@ -7501,7 +7544,8 @@ if (animateScore) {
                 spawnSparklesInFlashcard(plantGame, "flower");
                 
                 if (soundEnabled) {
-                  happySoundFlashcard();
+                 // happySoundFlashcard();
+                 playOkSound();
                 }
                 
                 setTimeout(() => {
@@ -7779,18 +7823,10 @@ function toggleMenu() {
   const menu = document.getElementById('menu');
   const hamburger = document.querySelector('.hamburger');
   
-  // ✅ AJOUT : Arrêter le Quiz Flash avant d'ouvrir le menu
-  if (!menu.classList.contains('active')) { // Si on OUVRE le menu
-    console.log('🔍 Ouverture du menu - arrêt du Quiz Flash');
-    try {
-      if (typeof quizFlashState !== 'undefined' && quizFlashState.timerInterval) {
-        clearInterval(quizFlashState.timerInterval);
-        quizFlashState.timerInterval = null;
-        console.log('✅ Quiz Flash arrêté via toggleMenu');
-      }
-    } catch (e) {
-      console.warn('⚠️ Erreur arrêt quiz:', e);
-    }
+if (!menu.classList.contains('active')) { // Si on OUVRE le menu
+  console.log('🔍 Ouverture du menu - arrêt du Quiz Flash');
+  stopQuizFlash();
+
   }
   
   menu.classList.toggle('active');
@@ -9602,8 +9638,6 @@ function setupTutorialDemoQuestion() {
     choices2.appendChild(btn);
   });
 }
-
-
 // =============================================================================
 // =============================================================================
 //                            SECTION 20 : FLASH QUIZZ
@@ -9754,6 +9788,12 @@ function startFlashTimer(item) {
     clearInterval(quizFlashState.timerInterval);
   }
 
+  // ✅ ARRÊTER le son de timer précédent s'il existe
+  if (quizFlashState.timerAudio) {
+    quizFlashState.timerAudio.pause();
+    quizFlashState.timerAudio.currentTime = 0;
+  }
+
   const difficulty = parseInt(localStorage.getItem('difficulty')) || 6;
   const duration = difficulty <= 4 ? 5 : difficulty <= 6 ? 4 : 3;
 
@@ -9783,12 +9823,17 @@ function startFlashTimer(item) {
       setTimeout(() => timerBar.classList.remove('flash-start'), 200);
     }, 100);
 
-    // 🔊 Son DÉCALÉ de 50ms pour meilleure synchro
+    // 🔊 NOUVEAU : Démarrer le son de timer
     setTimeout(() => {
       if (soundEnabled) {
-        playQuestionSound();
+        playMenuClicSound();
+        
+        // ✅ Démarrer le son de timer et le stocker
+        quizFlashState.timerAudio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/timer.mp3');
+        quizFlashState.timerAudio.volume = 0.5; // Ajuste le volume
+        quizFlashState.timerAudio.play().catch(err => console.log('Erreur timer audio:', err));
       }
-    }, 50);
+    }, 100);
 
     timerBar.style.width = '100%';
     timerBar.offsetHeight; // force repaint
@@ -9819,13 +9864,19 @@ function startFlashTimer(item) {
       if (remaining <= 0) {
         timerBar.classList.add('no-shine');
         clearInterval(quizFlashState.timerInterval);
+        
+        // ✅ ARRÊTER le son de timer
+        if (quizFlashState.timerAudio) {
+          quizFlashState.timerAudio.pause();
+          quizFlashState.timerAudio.currentTime = 0;
+        }
+        
         flipCardAndReveal(item);
       }
     }, 50);
 
   }, 250);
 }
-
 
 function flipCardAndReveal(item) {
   const card = document.getElementById('flashCard');
@@ -9834,7 +9885,7 @@ function flipCardAndReveal(item) {
   
   // Son de flip (réutilise un son existant)
   if (soundEnabled) {
-    playfireworksound2(); // Son différent pour la révélation
+    playQuestionSound(); // Son différent pour la révélation
   }
   
   // Jouer le son du romaji immédiatement
@@ -9845,8 +9896,8 @@ function flipCardAndReveal(item) {
     });
   }
   
-  // Attendre 2 secondes puis passer à la suivante
-  setTimeout(() => {
+  // ✅ STOCKER le timeout pour pouvoir l'annuler
+  quizFlashState.nextQuestionTimeout = setTimeout(() => {
     quizFlashState.currentQuestionIndex++;
     showNextQuestion();
   }, 2000);
@@ -9972,6 +10023,19 @@ function stopQuizFlash() {
     console.log('✅ Timer arrêté');
   }
   
+  // ✅ Arrêter le timeout de passage à la question suivante
+  if (quizFlashState && quizFlashState.nextQuestionTimeout) {
+    clearTimeout(quizFlashState.nextQuestionTimeout);
+    quizFlashState.nextQuestionTimeout = null;
+    console.log('✅ Timeout next question arrêté');
+  }
+  
+  // ✅ Arrêter le son de timer
+  if (quizFlashState && quizFlashState.timerAudio) {
+    quizFlashState.timerAudio.pause();
+    quizFlashState.timerAudio.currentTime = 0;
+  }
+  
   // Réinitialiser l'état
   quizFlashState.isFlipped = false;
   quizFlashState.currentQuestionIndex = 0;
@@ -9988,6 +10052,7 @@ function shuffleArray(array) {
   }
   return shuffled;
 }
+
 </script>
 </html>
 
