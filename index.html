@@ -5407,6 +5407,29 @@ function sadSoundFlashcard() {
   });
 }
 
+// === SONS DE BOUTONS ===
+// Son général pour les boutons de menu
+const buttonClickAudio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/menuclic.mp3');
+buttonClickAudio.volume = 0.7;
+
+// Son spécifique pour les boutons de réponse du quiz
+const quizAnswerAudio = new Audio('https://emmanuel971-source.github.io/hirakataquizz/learnclic.mp3');
+quizAnswerAudio.volume = 0.4; // Ajuste selon tes préférences
+
+// Fonction pour jouer le son général
+function playButtonClick() {
+  if (!soundEnabled) return;
+  buttonClickAudio.currentTime = 0;
+  buttonClickAudio.play().catch(err => console.log('Erreur son bouton:', err));
+}
+
+// Fonction pour jouer le son de réponse quiz
+function playQuizAnswerClick() {
+  if (!soundEnabled) return;
+  quizAnswerAudio.currentTime = 0;
+  quizAnswerAudio.play().catch(err => console.log('Erreur son réponse:', err));
+}
+
 // --- Initialisation au chargement ---
 loadSoundSettings();
 updateSoundUI();
@@ -8878,6 +8901,34 @@ console.warn(msg);
 // ============================================================================
 // 🎬 SECTION 17 : DÉMARRAGE APPLICATION
 // ============================================================================
+
+// Listener global
+document.addEventListener('click', (event) => {
+  // ✅ PRIORITÉ 1 : Boutons de réponse du quiz (son spécifique)
+  const quizAnswer = event.target.closest('.answer-btn, #choices1 button, #choices2 button');
+  if (quizAnswer) {
+    playQuizAnswerClick();
+    return; // Stopper ici pour ne pas jouer le son général
+  }
+  
+  // ✅ PRIORITÉ 2 : Autres boutons (son général)
+  const target = event.target.closest(`
+    .arcade-button,
+    .hamburger,
+    .difficulty-btn,
+    .emoji-button,
+    .switch,
+    button,
+    .hiragana-card,
+    .garden-plant
+  `);
+  
+  if (target) {
+    playButtonClick();
+  }
+});
+
+
 
 // --- Event listeners globaux ---
 document.addEventListener('click', () => userInteractions.clicks++);
