@@ -8919,21 +8919,12 @@ document.addEventListener('click', (event) => {
   }
   
   // ✅ PRIORITÉ 2 : Autres boutons (son général)
-  const target = event.target.closest(`
-    .arcade-button,
-    .hamburger,
-    .difficulty-btn,
-    .emoji-button,
-    .switch,
-    button,
-    .hiragana-card,
-   `);
+  const target = event.target.closest('.arcade-button, .hamburger, .difficulty-btn, .emoji-button, .switch, button, .hiragana-card');
   
   if (target) {
     playButtonClick();
   }
 });
-
 
 
 // --- Event listeners globaux ---
@@ -10112,6 +10103,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
