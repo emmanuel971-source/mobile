@@ -8902,13 +8902,20 @@ console.warn(msg);
 // 🎬 SECTION 17 : DÉMARRAGE APPLICATION
 // ============================================================================
 
+
 // Listener global
 document.addEventListener('click', (event) => {
+  // ✅ EXCLUSION : Boutons du sous-menu Quiz Flash
+  const isQuizFlashButton = event.target.closest('#options-quiz-flash-choice button');
+  if (isQuizFlashButton) {
+    return; // Pas de son pour ces boutons
+  }
+  
   // ✅ PRIORITÉ 1 : Boutons de réponse du quiz (son spécifique)
   const quizAnswer = event.target.closest('.answer-btn, #choices1 button, #choices2 button');
   if (quizAnswer) {
     playQuizAnswerClick();
-    return; // Stopper ici pour ne pas jouer le son général
+    return;
   }
   
   // ✅ PRIORITÉ 2 : Autres boutons (son général)
@@ -8920,8 +8927,7 @@ document.addEventListener('click', (event) => {
     .switch,
     button,
     .hiragana-card,
-    .garden-plant
-  `);
+   `);
   
   if (target) {
     playButtonClick();
@@ -10106,5 +10112,6 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
