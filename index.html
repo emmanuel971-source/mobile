@@ -592,7 +592,29 @@ html,body{height:100%;margin:0;padding:0}body{display:flex;align-items:center;ju
 
   100% { transform: scale(1); }
 }
+const cssForFinalTrophy = `
+/* Animation spéciale pour la carte finale */
+.final-trophy {
+  animation: finalTrophyPulse 2s ease-in-out infinite;
+}
 
+@keyframes finalTrophyPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 15px 60px rgba(255,215,0,0.4);
+  }
+}
+
+/* Effet supplémentaire sur les sparkles de la carte finale */
+.final-trophy .unlock-sparkles {
+  font-size: 1.5em;
+  animation: unlockSparkle 1.5s ease-in-out infinite;
+}
+`;
 </style>
 </head>
 <body>
@@ -1614,7 +1636,12 @@ token_expired_button: "Recharger la page",
 
 quiz_flash_choice_title: 'Quiz Flash',
 quiz_flash_hiragana: '🌸 Hiragana',
-quiz_flash_katakana: '⛩️ Katakana'
+quiz_flash_katakana: '⛩️ Katakana',
+
+        quiz_flash_group_complete: "Groupe Terminé !",
+    quiz_flash_all_complete: "Quiz Flash Terminé !",
+    quiz_flash_all_complete_subtitle: "Félicitations ! Vous avez complété tous les groupes !",
+    quiz_flash_group_counter: "Groupe" // pour "Groupe : 2/7"
 
   },
   
@@ -1889,7 +1916,12 @@ quiz_flash_group_complete: "Group completed!",
 
 quiz_flash_choice_title: 'Flash Quiz',
 quiz_flash_hiragana: '🌸 Hiragana',
-quiz_flash_katakana: '⛩️ Katakana'
+quiz_flash_katakana: '⛩️ Katakana',
+
+        quiz_flash_group_complete: "Group Complete!",
+    quiz_flash_all_complete: "Flash Quiz Complete!",
+    quiz_flash_all_complete_subtitle: "Congratulations! You completed all groups!",
+    quiz_flash_group_counter: "Group"
 
   },
   
@@ -2161,7 +2193,12 @@ unlock_learning_message: '¡Puedes aprender nuevos kanas de nuevo!',
 
 quiz_flash_choice_title: 'Flash Quiz',
 quiz_flash_hiragana: '🌸 Hiragana',
-quiz_flash_katakana: '⛩️ Katakana'
+quiz_flash_katakana: '⛩️ Katakana',
+
+        quiz_flash_group_complete: "¡Grupo Completado!",
+    quiz_flash_all_complete: "¡Quiz Flash Completado!",
+    quiz_flash_all_complete_subtitle: "¡Felicitaciones! ¡Has completado todos los grupos!",
+    quiz_flash_group_counter: "Grupo"
 }
 };  
 
@@ -9775,7 +9812,7 @@ function loadQuizGroup(groupNumber, type = 'hiragana') {
   console.log(`✅ ${quizFlashState.questionsPool.length} questions chargées`);
 }
 function showNextQuestion() {
-  const { currentQuestionIndex, questionsPool, currentGroup, type } = quizFlashState; // ⬅️ AJOUTER type
+  const { currentQuestionIndex, questionsPool, currentGroup, type } = quizFlashState;
     
   // Vérifier si le groupe est terminé
   if (currentQuestionIndex >= questionsPool.length) {
@@ -9786,11 +9823,12 @@ function showNextQuestion() {
   
   const item = questionsPool[currentQuestionIndex];
   
-  // Mettre à jour le header
+  // ✅ NOUVEAU : Afficher le compteur de groupe (ex: "Groupe : 2/7")
+  const totalGroups = Object.keys(GROUPES_flashquiz).length;
   document.getElementById('flashCounter').textContent = 
     `${currentQuestionIndex + 1}/${questionsPool.length}`;
   document.getElementById('flashGroupName').textContent = 
-    GROUPES_flashquiz[currentGroup].nom;
+    `${t('quiz_flash_group_counter')} ${currentGroup}/${totalGroups}`;
   
   // Réinitialiser la carte (face avant)
   const card = document.getElementById('flashCard');
@@ -9804,13 +9842,13 @@ function showNextQuestion() {
   quizFlashState.isFlipped = false;
 
   // Puis afficher le nouvel hiragana/katakana sur la face avant
-  const kanaToShow = type === 'katakana' ? item.Katakana : item.Hiragana; // ⬅️ AJOUTER
+  const kanaToShow = type === 'katakana' ? item.Katakana : item.Hiragana;
   
-  document.getElementById('flashHiragana').textContent = kanaToShow; // ⬅️ MODIFIER
+  document.getElementById('flashHiragana').textContent = kanaToShow;
   
   // ✅ ATTENDRE que l'animation soit terminée pour remplir la face arrière
   setTimeout(() => {
-    document.getElementById('flashHiraganaSmall').textContent = kanaToShow; // ⬅️ MODIFIER
+    document.getElementById('flashHiraganaSmall').textContent = kanaToShow;
     document.getElementById('flashRomaji').textContent = item.Romaji;
     safeConvertEmojis(document.getElementById('flashHiraganaSmall'));
   }, 600);
@@ -9819,16 +9857,10 @@ function showNextQuestion() {
   safeConvertEmojis(document.getElementById('flashHiragana'));
   safeConvertEmojis(document.getElementById('flashHiraganaSmall'));
   
-
-  
-  // ✅ MODIFICATION 1 : Démarrer le timer APRÈS l'animation de flip (600ms)
+  // ✅ MODIFICATION : Démarrer le timer APRÈS l'animation de flip (600ms)
   setTimeout(() => {
     startFlashTimer(item);
   }, 3);
-    // Son de pop
-   //if (soundEnabled) {
-  //   playQuestionSound(); // ou un nom similaire
- // }
 }
 
 function startFlashTimer(item) {
@@ -9970,7 +10002,6 @@ function showTrophyFlashcard(completedGroup) {
   let colors = seasonColors[season] || seasonColors.spring;
   if (timeOfDay === 'night') {
     colors = colors.map(c => {
-      // Assombrit les couleurs pour la nuit
       const rgb = parseInt(c.slice(1), 16);
       const r = Math.max(0, ((rgb >> 16) & 0xFF) * 0.6);
       const g = Math.max(0, ((rgb >> 8) & 0xFF) * 0.6);
@@ -9983,7 +10014,7 @@ function showTrophyFlashcard(completedGroup) {
   const color1 = colors[Math.floor(Math.random() * colors.length)];
   const color2 = colors[Math.floor(Math.random() * colors.length)];
   
-  // ✅ MODIFICATION 2 : Sélection d'un trophée unique (jamais utilisé)
+  // ✅ Sélection d'un trophée unique (jamais utilisé)
   const trophyEmojis = ['🏆', '🎉', '🎏', '🎊', '🌟', '👑', '🏵️'];
   
   // Filtrer les trophées non utilisés
@@ -10002,30 +10033,63 @@ function showTrophyFlashcard(completedGroup) {
   
   // Mémoriser ce trophée comme utilisé
   quizFlashState.usedTrophies.push(randomTrophy);
- 
-  portal.innerHTML = `
-    <div class="revision-flashcard unlock-flashcard" style="background: linear-gradient(135deg, ${color1} 0%, ${color2} 100%);">
-      <div class="unlock-sparkles" style="position: absolute; top: 10%; left: 10%;">✨</div>
-      <div class="unlock-sparkles" style="position: absolute; top: 10%; right: 10%; animation-delay: 0.3s;">✨</div>
-      <div class="unlock-sparkles" style="position: absolute; bottom: 15%; left: 15%; animation-delay: 0.6s;">✨</div>
-      <div class="unlock-sparkles" style="position: absolute; bottom: 15%; right: 15%; animation-delay: 0.9s;">✨</div>
-      
-      <div style="font-size: 6em; margin-bottom: 0.3em;">${randomTrophy}</div>
-      <div style="font-size: 2.2em; font-weight: bold; color: #fff; text-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 0.5em;">
-        ${t('quiz_flash_group_complete')}
+  
+  // ✅ NOUVEAU : Vérifier si c'est le dernier groupe
+  const totalGroups = Object.keys(GROUPES_flashquiz).length;
+  const isLastGroup = completedGroup >= totalGroups;
+  
+  // ✅ CARTE DIFFÉRENTE si dernier groupe
+  if (isLastGroup) {
+    portal.innerHTML = `
+      <div class="revision-flashcard unlock-flashcard final-trophy" style="background: linear-gradient(135deg, ${color1} 0%, ${color2} 100%);">
+        <div class="unlock-sparkles" style="position: absolute; top: 10%; left: 10%;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; top: 10%; right: 10%; animation-delay: 0.3s;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; bottom: 15%; left: 15%; animation-delay: 0.6s;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; bottom: 15%; right: 15%; animation-delay: 0.9s;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; top: 50%; left: 5%; animation-delay: 1.2s;">🎊</div>
+        <div class="unlock-sparkles" style="position: absolute; top: 50%; right: 5%; animation-delay: 1.5s;">🎊</div>
+        
+        <div style="font-size: 7em; margin-bottom: 0.3em;">🎊🏆🎊</div>
+        <div style="font-size: 2.5em; font-weight: bold; color: #fff; text-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 0.5em;">
+          ${t('quiz_flash_all_complete')}
+        </div>
+        <div style="font-size: 1.3em; color: #fff; opacity: 0.95; margin-bottom: 0.3em;">
+          ${t('quiz_flash_all_complete_subtitle')}
+        </div>
+        <div style="font-size: 1.5em; color: #fff; opacity: 0.9; font-weight: bold;">
+          ${totalGroups}/${totalGroups} ${t('quiz_flash_group_counter')}s ✓
+        </div>
       </div>
-      <div style="font-size: 1.5em; color: #fff; opacity: 0.9;">
-        ${GROUPES_flashquiz[completedGroup].nom} terminé !
+    `;
+  } else {
+    // Carte normale pour un groupe
+    portal.innerHTML = `
+      <div class="revision-flashcard unlock-flashcard" style="background: linear-gradient(135deg, ${color1} 0%, ${color2} 100%);">
+        <div class="unlock-sparkles" style="position: absolute; top: 10%; left: 10%;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; top: 10%; right: 10%; animation-delay: 0.3s;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; bottom: 15%; left: 15%; animation-delay: 0.6s;">✨</div>
+        <div class="unlock-sparkles" style="position: absolute; bottom: 15%; right: 15%; animation-delay: 0.9s;">✨</div>
+        
+        <div style="font-size: 6em; margin-bottom: 0.3em;">${randomTrophy}</div>
+        <div style="font-size: 2.2em; font-weight: bold; color: #fff; text-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 0.5em;">
+          ${t('quiz_flash_group_complete')}
+        </div>
+        <div style="font-size: 1.5em; color: #fff; opacity: 0.9;">
+          ${t('quiz_flash_group_counter')} ${completedGroup}/${totalGroups} ✓
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
   
   portal.classList.add('active');
   safeConvertEmojis(portal);
   
-  // Feu d'artifice
+  // Feu d'artifice (double pour la fin complète)
   setTimeout(() => {
     triggerAdvancedFirework(document.body);
+    if (isLastGroup) {
+      setTimeout(() => triggerAdvancedFirework(document.body), 600);
+    }
   }, 300);
   
   // Son de niveau up
@@ -10033,7 +10097,9 @@ function showTrophyFlashcard(completedGroup) {
     playLevelUp();
   }
   
-  // Fermer après 3 secondes et passer au groupe suivant
+  // Fermer après 3 secondes (4 pour la carte finale)
+  const closeDelay = isLastGroup ? 4000 : 3000;
+  
   setTimeout(() => {
     const flashcard = portal.querySelector('.revision-flashcard');
     if (flashcard) {
@@ -10046,11 +10112,11 @@ function showTrophyFlashcard(completedGroup) {
       portal.classList.remove('active');
       portal.innerHTML = '';
       
-// Passer au groupe suivant s'il existe
-const nextGroup = completedGroup + 1;
-if (GROUPES_flashquiz[nextGroup]) {
-  const currentType = quizFlashState.type || 'hiragana'; // ⬅️ AJOUTER
-  startQuizFlash(nextGroup, currentType); // ⬅️ PASSER LE TYPE
+      // Passer au groupe suivant s'il existe
+      const nextGroup = completedGroup + 1;
+      if (GROUPES_flashquiz[nextGroup]) {
+        const currentType = quizFlashState.type || 'hiragana';
+        startQuizFlash(nextGroup, currentType);
       } else {
         // Tous les groupes terminés - retour au menu
         console.log('🎉 TOUS LES GROUPES TERMINÉS !');
@@ -10059,8 +10125,9 @@ if (GROUPES_flashquiz[nextGroup]) {
         showSection('menu');
       }
     }, 400);
-  }, 3000);
+  }, closeDelay);
 }
+
 // ✅ AJOUTER cette fonction dans votre code JavaScript (dans la section Quiz Flash)
 function stopQuizFlash() {
   console.log('🛑 Tentative d\'arrêt du Quiz Flash...');
@@ -10103,6 +10170,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
