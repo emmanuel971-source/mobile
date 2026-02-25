@@ -6,14 +6,12 @@
   (function() {
     const userAgent = navigator.userAgent || '';
     
-    // Détection tablettes et smartphones
     const isTablet = /iPad/i.test(userAgent) || 
                      (/Android/i.test(userAgent) && !/Mobile/i.test(userAgent)) ||
-                     (navigator.maxTouchPoints > 1 && /Macintosh/i.test(userAgent)); // iPad iOS 13+
+                     (/Macintosh/i.test(userAgent) && navigator.maxTouchPoints >= 1);
     
     const isSmartphone = /Android.*Mobile|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     
-    // On redirige uniquement si ce n'est ni un smartphone ni une tablette
     if (!isSmartphone && !isTablet) {
       window.location.href = 'https://www.landscape.kanaszengarden.org';
     }
@@ -10188,6 +10186,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
