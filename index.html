@@ -4,19 +4,22 @@
 <meta charset="UTF-8">
 <script>
   (function() {
-    const userAgent = navigator.userAgent || '';
+    const ua = navigator.userAgent || '';
     
-    const isIPadPro = /Macintosh/i.test(userAgent) && navigator.maxTouchPoints >= 1;
-    const isTablet = /iPad/i.test(userAgent) || 
-                     (/Android/i.test(userAgent) && !/Mobile/i.test(userAgent)) ||
-                     isIPadPro;
+    // 1. Détection des Smartphones
+    const isSmartphone = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
     
-    const isSmartphone = /Android.*Mobile|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    
-    // Debug temporaire - à retirer ensuite
-    alert('isIPadPro: ' + isIPadPro + ' | isTablet: ' + isTablet + ' | isSmartphone: ' + isSmartphone);
-    
-    if (!isSmartphone && !isTablet) {
+    // 2. Détection des Tablettes (iPad, Android Tablet, et iPad Pro qui simule un Mac)
+    const isIPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
+    const isTablet = isIPad || isAndroidTablet;
+
+    // 3. Sécurité supplémentaire : si l'appareil est tactile, on considère que c'est Mobile/Tablette
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+    // Redirection : SI ce n'est PAS un smartphone ET PAS une tablette ET PAS tactile
+    // Alors on considère que c'est un Desktop / Laptop / TV
+    if (!isSmartphone && !isTablet && !isTouchDevice) {
       window.location.href = 'https://www.landscape.kanaszengarden.org';
     }
   })();
@@ -10190,6 +10193,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
