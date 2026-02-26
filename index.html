@@ -3,26 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <script>
-  (function() {
-    // On crée exactement la même condition que ton CSS
-    const isTabletOrMobileQuery = window.matchMedia("(max-width: 1024px) and (-webkit-min-device-pixel-ratio: 2)");
-//    const isStandardMobile = window.matchMedia("(max-width: 767px)");
+(function() {
+    function checkAndRedirect() {
+        // 1. Ta règle CSS spécifique (très sélective pour les iPad/Tablettes Retina)
+        const isRetinaTablet = window.matchMedia("(max-width: 1024px) and (-webkit-min-device-pixel-ratio: 2)").matches;
+        
+        // 2. Détection tactile multi-points (Spécifique Smartphones/Tablettes)
+        // Les PC portables tactiles ont souvent 10 points, mais on couple ça à la taille
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
+        // 3. Largeur de l'écran (on ratisse large pour inclure les tablettes en paysage)
+        const isSmallScreen = window.innerWidth <= 1100;
 
-    // Fonction de vérification
-    function checkDevice() {
-      // Si l'appareil correspond à ta règle CSS tablette OU est un mobile standard
-      if (isTabletOrMobileQuery.matches) {
-        console.log("Appareil tactile/tablette détecté : On reste ici.");
-        return; 
-      } else {
-        // Sinon (Desktop, Laptop sans retina ou grand écran), on redirige
-        window.location.href = 'https://www.landscape.kanaszengarden.org';
-      }
+        // LOGIQUE D'INVERSION : On ne redirige QUE si c'est clairement un ordinateur
+        // C'est-à-dire : Grand écran ET pas de Retina spécifique ET (pas de tactile ou souris détectée)
+        if (!isRetinaTablet && !isSmallScreen && !isTouch) {
+            window.location.replace('https://www.landscape.kanaszengarden.org');
+        } else {
+            console.log("On reste sur le site mobile/tablette");
+        }
     }
 
-    // Exécution immédiate
-    checkDevice();
-  })();
+    // On attend que le DOM soit chargé pour avoir les bonnes dimensions d'écran
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkAndRedirect);
+    } else {
+        checkAndRedirect();
+    }
+})();
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <link rel="icon" href="data:,">
@@ -10193,6 +10201,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
