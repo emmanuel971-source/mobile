@@ -6,12 +6,12 @@
   (function() {
     // On crée exactement la même condition que ton CSS
     const isTabletOrMobileQuery = window.matchMedia("(max-width: 1024px) and (-webkit-min-device-pixel-ratio: 2)");
-    const isStandardMobile = window.matchMedia("(max-width: 767px)");
+//    const isStandardMobile = window.matchMedia("(max-width: 767px)");
 
     // Fonction de vérification
     function checkDevice() {
       // Si l'appareil correspond à ta règle CSS tablette OU est un mobile standard
-      if (isTabletOrMobileQuery.matches || isStandardMobile.matches) {
+      if (isTabletOrMobileQuery.matches) {
         console.log("Appareil tactile/tablette détecté : On reste ici.");
         return; 
       } else {
@@ -10193,6 +10193,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
