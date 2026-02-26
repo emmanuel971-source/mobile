@@ -4,22 +4,20 @@
 <meta charset="UTF-8">
 <script>
   (function() {
-    const ua = navigator.userAgent || '';
-    
-    // 1. Détection des Smartphones
-    const isSmartphone = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    
-    // 2. Détection des Tablettes (iPad, Android Tablet, et iPad Pro qui simule un Mac)
-    const isIPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
-    const isTablet = isIPad || isAndroidTablet;
+    // 1. On définit la largeur limite (en pixels)
+    // En dessous de 1100px, on considère que c'est une tablette (iPad Pro inclus) ou un mobile
+    const mobileTabletMaxWidth = 1100;
 
-    // 3. Sécurité supplémentaire : si l'appareil est tactile, on considère que c'est Mobile/Tablette
+    // 2. On vérifie si l'appareil est tactile
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-    // Redirection : SI ce n'est PAS un smartphone ET PAS une tablette ET PAS tactile
-    // Alors on considère que c'est un Desktop / Laptop / TV
-    if (!isSmartphone && !isTablet && !isTouchDevice) {
+    // 3. On récupère la largeur réelle de l'écran
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+
+    // LOGIQUE : 
+    // Si l'écran est large (Desktop/TV) 
+    // ET que ce n'est pas un appareil tactile (ou si tu veux forcer la redirection même tactile sur grand écran)
+    if (screenWidth > mobileTabletMaxWidth) {
       window.location.href = 'https://www.landscape.kanaszengarden.org';
     }
   })();
@@ -10193,6 +10191,7 @@ function shuffleArray(array) {
 
 </script>
 </html>
+
 
 
 
