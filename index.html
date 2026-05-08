@@ -10,7 +10,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #00403a;
+  --bg:         #511214;
   --panel:      #1a1c20;
   --panel2:     #1e2024;
   --border:     #2e3138;
@@ -265,7 +265,7 @@ input[type=range] {
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px; height: 20px;
+  width: 20px; height: 20px;   /* plus grand pour doigt */
   border-radius: 50%;
   background: var(--amber);
   box-shadow: 0 0 6px var(--amber-glow);
@@ -317,15 +317,6 @@ input[type=range]::-webkit-slider-thumb {
   border-color: #003d5c;
   box-shadow: 0 0 10px #00e5ff30;
 }
-/* FIX 8 : feedback visuel quand setMode bloqué pendant running */
-.mode-btn.blocked {
-  animation: shake 0.3s ease;
-}
-@keyframes shake {
-  0%,100% { transform: translateX(0); }
-  25%      { transform: translateX(-4px); }
-  75%      { transform: translateX(4px); }
-}
 
 /* ── MUSIC MODE : panneau d'état autocorrélation ── */
 .acorr-panel {
@@ -355,10 +346,6 @@ input[type=range]::-webkit-slider-thumb {
 /* contrôles spécifiques MUSIC (masqués en mode TAP) */
 .ctrl-music-only { display: none; }
 .ctrl-music-only.visible { display: flex; }
-
-/* contrôles spécifiques TAP (masqués en mode MUSIC) */
-.ctrl-tap-only { display: flex; }
-.ctrl-tap-only.hidden { display: none; }
 
 /* ── BOUTONS ── */
 .btn-panel {
@@ -409,7 +396,7 @@ input[type=range]::-webkit-slider-thumb {
   <div class="rack-header">
     <div class="screw"></div>
     <span class="brand">STUDIO</span>
-    <span class="rack-title">MULTIBAND AUTOCORRELATION</span>
+    <span class="rack-title">MINI BPM DETECTOR</span>
     <div class="led-power" id="led-power"></div>
     <div class="screw"></div>
   </div>
@@ -433,7 +420,7 @@ input[type=range]::-webkit-slider-thumb {
   <!-- VU + SCOPE en colonne -->
   <div class="meters-col">
     <div class="vu-wrap">
-      <div class="vu-label" id="vu-label">BASS</div>
+      <div class="vu-label">BASS</div>
       <div class="vu-bar-h"><div class="vu-fill-h" id="vu-fill"></div></div>
       <div id="db-label">-∞ dB</div>
     </div>
@@ -465,23 +452,19 @@ input[type=range]::-webkit-slider-thumb {
       <span>ANALYSE EN COURS…</span>
       <span>CONFIANCE : <span id="acorr-confidence">--</span></span>
     </div>
-    <div class="ctrl-group" style="margin-top:6px">
-      <div class="ctrl-label">SEUIL LOCK <span class="ctrl-val" id="lock-thresh-val">0.18</span> <span style="color:var(--text-muted);font-size:8px">(brut : <span id="acorr-raw">--</span>)</span></div>
-      <input type="range" id="lock-thresh" min="0.05" max="0.50" step="0.01" value="0.18">
-    </div>
   </div>
 
   <!-- CONTROLS -->
   <div class="controls-panel">
-    <div class="ctrl-group ctrl-tap-only" id="ctrl-sens">
+    <div class="ctrl-group" id="ctrl-sens">
       <div class="ctrl-label">SENSIBILITÉ <span class="ctrl-val" id="sens-val">1.8</span></div>
       <input type="range" id="sens" min="1.2" max="3" step="0.1" value="1.8">
     </div>
-    <div class="ctrl-group ctrl-tap-only" id="ctrl-smooth">
+    <div class="ctrl-group" id="ctrl-smooth">
       <div class="ctrl-label">LISSAGE BPM <span class="ctrl-val" id="smooth-val">0.75</span></div>
       <input type="range" id="smooth" min="0.5" max="0.95" step="0.01" value="0.75">
     </div>
-    <div class="ctrl-group ctrl-tap-only" id="ctrl-refrac">
+    <div class="ctrl-group" id="ctrl-refrac">
       <div class="ctrl-label">REFRACTORY (ms) <span class="ctrl-val" id="refrac-val">180</span></div>
       <input type="range" id="refrac" min="100" max="400" step="10" value="180">
     </div>
@@ -501,410 +484,136 @@ input[type=range]::-webkit-slider-thumb {
   <!-- FOOTER -->
   <div class="rack-footer">
     <span id="footer-mode-label">BASS ONSET DETECTION</span>
-    <span>v3.1</span>
+    <span>v3.0</span>
   </div>
 
 </div>
 
 <script>
 // ============================================================
-// AUDIO
+// CONFIGURATION & VARIABLES
 // ============================================================
-let ctx, analyser, src, stream;
+let ctx, analyser, source;
 let running = false;
 
-// ============================================================
-// MODE
-// ============================================================
-let currentMode = 'tap';
+// Logique de détection
+let energyHistory = new Float32Array(50); // Historique court pour moyenne mobile
+let historyPtr = 0;
+let lastOnsetTime = 0;
+let intervals = []; // Stockage des délais entre les beats
 
-function setMode(m) {
-  // FIX 8 : feedback visuel si tentative de changement pendant running
-  if (running) {
-    const btn = document.getElementById(m === 'tap' ? 'btn-mode-tap' : 'btn-mode-music');
-    btn.classList.add('blocked');
-    setTimeout(() => btn.classList.remove('blocked'), 350);
-    return;
-  }
-  currentMode = m;
-  const isTap = m === 'tap';
-
-  document.getElementById('btn-mode-tap').className = 'mode-btn' + (isTap ? ' active-tap' : '');
-  document.getElementById('btn-mode-music').className = 'mode-btn' + (!isTap ? ' active-music' : '');
-  document.getElementById('acorr-panel').classList.toggle('visible', !isTap);
-  document.querySelectorAll('.ctrl-tap-only').forEach(el => el.classList.toggle('hidden', !isTap));
-  document.querySelectorAll('.ctrl-music-only').forEach(el => el.classList.toggle('visible', !isTap));
-
-  // FIX (VU label) : adapter le label selon le mode
-  document.getElementById('vu-label').textContent = isTap ? 'BASS' : 'FLUX';
-
-  document.getElementById('footer-mode-label').textContent =
-    isTap ? 'BASS ONSET DETECTION' : 'SPECTRAL FLUX MULTI-BANDES · 100HZ';
-
-  resetState();
-}
+// Paramètres (liés à tes sliders)
+let SENS = 1.8;      // Sensibilité (seuil)
+let REFRAC = 200;    // Temps mort en ms (évite les doubles déclenchements)
+let SMOOTH = 0.8;    // Lissage de l'affichage
 
 // ============================================================
-// STATE & PARAMS
-// ============================================================
-let energyHistory = [], onsetHistory = [], beatTimes = [];
-let lastBeat = 0, lastOnsetTime = 0, smoothedBpm = null, flashTimeout = null;
-
-let SENS = 1.8, SMOOTH = 0.75, REFRAC = 180;
-const HIST_COUNT = 16;
-
-// MUSIC MODE
-let MSMOOTH = 0.85, LOCK_THRESH = 0.18;
-const AC_FFT_SIZE = 4096;
-const AC_HOP_RATE = 100; // 10ms
-const AC_BUF_SEC  = 8;
-const FLUX_GATE   = 0.02;
-
-const WEIGHT_BASS = 1.5, WEIGHT_MID = 0.5, WEIGHT_HIGH = 1.2;
-
-let acBufLen = 0, acBuf = null, acBufPtr = 0, acBufFull = false;
-let acPrevMag = null, acSmoothedBpm = null, acLastUpdate = 0;
-let acFluxSmooth = 0, acLastSampleTime = 0;
-
-let _tapTimeDomain = null, _tapFreqBins = null;
-let _musTimeDomain = null, _musFreqBins = null;
-
-// UI REFS
-const bpmEl     = document.getElementById('bpm');
-const dbLabel   = document.getElementById('db-label');
-const vuFill    = document.getElementById('vu-fill');
-const stateBadge= document.getElementById('state-badge');
-const stateText = document.getElementById('state-text');
-const beatFlash = document.getElementById('beat-flash');
-const ledPower  = document.getElementById('led-power');
-const btnToggle = document.getElementById('btn-toggle');
-const histRow   = document.getElementById('history-row');
-const canvas    = document.getElementById('wave');
-const cctx      = canvas.getContext('2d');
-const acCanvas  = document.getElementById('acorr-canvas');
-const acCtx     = acCanvas.getContext('2d');
-const acConfidence = document.getElementById('acorr-confidence');
-const acorrRaw  = document.getElementById('acorr-raw');
-
-// ── BEAT GRID : création des dots au démarrage ──────────────
-const histDots = [];
-(function initBeatGrid() {
-  for (let i = 0; i < HIST_COUNT; i++) {
-    const d = document.createElement('div');
-    d.className = 'history-dot';
-    histRow.insertBefore(d, histRow.querySelector('.history-label'));
-    histDots.push(d);
-  }
-})();
-
-let beatGridPtr = 0; // pointeur circulaire pour la grille
-
-// ============================================================
-// CONTROLS
-// ============================================================
-document.getElementById('sens').oninput       = e => { SENS        = +e.target.value; document.getElementById('sens-val').textContent        = SENS.toFixed(1); };
-document.getElementById('smooth').oninput     = e => { SMOOTH      = +e.target.value; document.getElementById('smooth-val').textContent      = SMOOTH.toFixed(2); };
-document.getElementById('msmooth').oninput    = e => { MSMOOTH     = +e.target.value; document.getElementById('msmooth-val').textContent     = MSMOOTH.toFixed(2); };
-document.getElementById('lock-thresh').oninput= e => { LOCK_THRESH = +e.target.value; document.getElementById('lock-thresh-val').textContent = LOCK_THRESH.toFixed(2); };
-// FIX 4 : handler manquant pour le slider refrac
-document.getElementById('refrac').oninput     = e => { REFRAC      = +e.target.value; document.getElementById('refrac-val').textContent      = REFRAC.toFixed(0); };
-
-// ============================================================
-// START / STOP
+// DÉMARRAGE AUDIO
 // ============================================================
 async function toggle() {
-  if (running) {
-    stream.getTracks().forEach(t => t.stop());
+  if (!running) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    source = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(analyser);
+    
+    running = true;
+    document.getElementById('btn-toggle').innerText = "⏹ STOP";
+    document.getElementById('led-power').classList.add('on');
+    loop();
+  } else {
     ctx.close();
     running = false;
-    ledPower.classList.remove('on');
-    btnToggle.textContent = '▶ START';
-    btnToggle.classList.remove('running');
-    resetState();
-    return;
+    document.getElementById('btn-toggle').innerText = "▶ START";
+    document.getElementById('led-power').classList.remove('on');
   }
-
-  // FIX 7 : try/catch sur getUserMedia avec feedback utilisateur
-  try {
-    ctx = new AudioContext();
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    });
-  } catch (err) {
-    const msg = err.name === 'NotAllowedError'
-      ? 'ACCÈS MICRO REFUSÉ'
-      : 'ERREUR MICRO : ' + err.message;
-    bpmEl.textContent = '!';
-    dbLabel.textContent = msg.substring(0, 12);
-    setUIState('silence');
-    console.error('[BPM] getUserMedia error:', err);
-    return;
-  }
-
-  src      = ctx.createMediaStreamSource(stream);
-  analyser = ctx.createAnalyser();
-
-  if (currentMode === 'music') {
-    analyser.fftSize = AC_FFT_SIZE;
-    acBufLen = Math.floor(AC_HOP_RATE * AC_BUF_SEC);
-    acBuf    = new Float32Array(acBufLen);
-    acBufPtr = 0; acBufFull = false;
-    acPrevMag        = new Float32Array(analyser.frequencyBinCount);
-    _musTimeDomain   = new Float32Array(analyser.fftSize);
-    _musFreqBins     = new Float32Array(analyser.frequencyBinCount);
-    acSmoothedBpm    = null; acLastUpdate = 0; acFluxSmooth = 0;
-    acLastSampleTime = performance.now();
-  } else {
-    analyser.fftSize   = 2048;
-    _tapTimeDomain     = new Float32Array(analyser.fftSize);
-    _tapFreqBins       = new Uint8Array(analyser.frequencyBinCount);
-  }
-
-  src.connect(analyser);
-  running = true;
-  ledPower.classList.add('on');
-  btnToggle.textContent = '■ STOP';
-  btnToggle.classList.add('running');
-  currentMode === 'music' ? loopMusic() : loop();
-}
-
-function resetState() {
-  energyHistory = []; onsetHistory = []; beatTimes = [];
-  lastBeat = 0; lastOnsetTime = 0; smoothedBpm = null; acSmoothedBpm = null;
-  bpmEl.textContent = '--';
-  bpmEl.classList.remove('locked');
-  // Reset VU meter
-  vuFill.style.width = '0%';
-  dbLabel.textContent = '-∞ dB';
-  // Reset beat grid
-  beatGridPtr = 0;
-  histDots.forEach(d => d.classList.remove('active'));
-  setUIState('silence');
 }
 
 // ============================================================
-// LOOPS
+// BOUCLE DE TRAITEMENT (60 FPS)
 // ============================================================
 function loop() {
   if (!running) return;
   requestAnimationFrame(loop);
-  analyser.getFloatTimeDomainData(_tapTimeDomain);
-  analyser.getByteFrequencyData(_tapFreqBins);
 
-  const binHz  = (ctx.sampleRate / 2) / analyser.frequencyBinCount;
-  const bassMax = Math.round(200 / binHz);
-  let bassSum = 0;
-  for (let i = 0; i < bassMax; i++) bassSum += _tapFreqBins[i];
-  let bassEnergy = bassSum / bassMax / 255;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
 
-  energyHistory.push(bassEnergy);
-  if (energyHistory.length > 300) energyHistory.shift();
+  // 1. On se focalise sur les Basses (0 à 150Hz environ)
+  let lowEnergy = 0;
+  for(let i=0; i<10; i++) lowEnergy += data[i];
+  lowEnergy /= 10;
 
-  const diff = bassEnergy - (energyHistory.at(-2) || bassEnergy);
-  onsetHistory.push(diff);
-  if (onsetHistory.length > 60) onsetHistory.shift();
+  // 2. Calcul du seuil adaptatif (moyenne des 50 dernières frames)
+  let avgEnergy = 0;
+  for(let n of energyHistory) avgEnergy += n;
+  avgEnergy /= energyHistory.length;
+  energyHistory[historyPtr] = lowEnergy;
+  historyPtr = (historyPtr + 1) % energyHistory.length;
 
-  // FIX (VU) : mise à jour VU meter en mode TAP (énergie basse)
-  updateVU(bassEnergy);
-
-  const threshold = avg(onsetHistory) + SENS * stddev(onsetHistory, avg(onsetHistory));
+  // 3. DÉTECTION DU PIC (Onset)
   const now = performance.now();
-  if (diff > threshold && now - lastBeat > REFRAC) triggerBeat(now);
-  drawWave(_tapTimeDomain);
-}
-
-function loopMusic() {
-  if (!running) return;
-  requestAnimationFrame(loopMusic);
-
-  analyser.getFloatTimeDomainData(_musTimeDomain);
-  analyser.getFloatFrequencyData(_musFreqBins);
-
-  // SPECTRAL FLUX MULTI-BANDES
-  const nBins   = analyser.frequencyBinCount;
-  const nyquist = ctx.sampleRate / 2;
-  let fluxB = 0, fluxM = 0, fluxH = 0, cB = 0, cM = 0, cH = 0;
-
-  for (let i = 0; i < nBins; i++) {
-    const hz  = (i * nyquist) / nBins;
-    const mag = Math.max(0, (_musFreqBins[i] + 100) / 100);
-    const d   = mag - acPrevMag[i];
-    acPrevMag[i] = mag;
-    if (d > 0) {
-      if      (hz <= 150)  { fluxB += d; cB++; }
-      else if (hz <= 1000) { fluxM += d; cM++; }
-      else if (hz <= 4000) { fluxH += d; cH++; }
-    }
+  if (lowEnergy > avgEnergy * SENS && (now - lastOnsetTime) > REFRAC) {
+    triggerBeat(now);
   }
 
-  const totalFlux = ((fluxB/(cB||1))*WEIGHT_BASS) + ((fluxM/(cM||1))*WEIGHT_MID) + ((fluxH/(cH||1))*WEIGHT_HIGH);
-  const finalFlux = totalFlux > FLUX_GATE ? totalFlux : 0;
-  acFluxSmooth    = 0.5 * acFluxSmooth + 0.5 * finalFlux;
-
-  // FIX (VU) : mise à jour VU meter en mode MUSIC (flux normalisé)
-  updateVU(Math.min(acFluxSmooth / 2, 1));
-
-  const now = performance.now();
-  if (now - acLastSampleTime >= (1000 / AC_HOP_RATE)) {
-    acLastSampleTime    = now;
-    acBuf[acBufPtr]     = acFluxSmooth;
-    acBufPtr            = (acBufPtr + 1) % acBufLen;
-    if (!acBufFull && acBufPtr === 0) acBufFull = true;
-    const available     = acBufFull ? acBufLen : acBufPtr;
-    // FIX 5 : vérification que len > lagMax avant de lancer l'autocorrélation
-    const lagMax        = Math.floor(AC_HOP_RATE * 60 / 60); // = 100
-    if (available > lagMax + 10) computeAcorrBPM(available);
-  }
-  drawWave(_musTimeDomain);
+  // 4. MISE À JOUR UI (VU Meter & Scope)
+  updateUI(lowEnergy, data);
 }
 
 // ============================================================
-// CORE MATH
+// CALCUL DU BPM (La Magie de la Médiane)
 // ============================================================
-function computeAcorrBPM(len) {
-  const sig = new Float32Array(len);
-  let mean  = 0;
-  for (let i = 0; i < len; i++) {
-    sig[i] = acBuf[(acBufPtr - len + i + acBufLen) % acBufLen];
-    mean  += sig[i];
-  }
-  mean /= len;
-  for (let i = 0; i < len; i++) sig[i] -= mean;
-
-  const lagMin = Math.ceil(AC_HOP_RATE * 60 / 180);
-  const lagMax = Math.floor(AC_HOP_RATE * 60 / 60);
-  let norm0 = 0;
-  for (let i = 0; i < len; i++) norm0 += sig[i] * sig[i];
-  if (norm0 < 1e-8) return;
-
-  const acVals = [];
-  const peaks  = [];
-  for (let lag = lagMin; lag <= lagMax; lag++) {
-    let ac = 0;
-    for (let i = 0; i < len - lag; i++) ac += sig[i] * sig[i + lag];
-    ac /= norm0;
-    ac *= (len / (len - lag));
-    acVals.push(ac);
-  }
-
-  for (let i = 1; i < acVals.length - 1; i++) {
-    if (acVals[i] > acVals[i-1] && acVals[i] > acVals[i+1]) {
-      peaks.push({ bpm: (AC_HOP_RATE * 60) / (lagMin + i), score: acVals[i], lagIdx: i });
-    }
-  }
-
-  if (peaks.length === 0) return;
-  peaks.sort((a, b) => b.score - a.score);
-  let best = peaks[0];
-  for (const p of peaks) { if (p.bpm >= 85 && p.bpm <= 155 && p.score > best.score * 0.75) { best = p; break; } }
-
-  const confidence = Math.max(0, best.score);
-  acConfidence.textContent = (confidence * 100).toFixed(0) + '%';
-  acorrRaw.textContent     = best.score.toFixed(3);
-
-  const ds      = confidence > LOCK_THRESH ? MSMOOTH : 0.95;
-  acSmoothedBpm = acSmoothedBpm === null ? best.bpm : (ds * acSmoothedBpm + (1 - ds) * best.bpm);
-  bpmEl.textContent = Math.round(acSmoothedBpm);
-  acLastUpdate  = performance.now();
-  setUIState(confidence > LOCK_THRESH ? 'locked' : 'tracking');
-  drawAcorrGraph(acVals, best.lagIdx);
-}
-
-// ============================================================
-// UI & HELPERS
-// ============================================================
-function setUIState(s) {
-  stateBadge.className  = 'state-badge ' + s;
-  stateText.textContent = s.toUpperCase();
-  bpmEl.classList.toggle('locked', s === 'locked');
-}
-
-function avg(a)      { return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0; }
-function stddev(a,m) { return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); }
-
-// FIX (VU) : fonction centralisée de mise à jour du VU meter
-function updateVU(norm) {
-  const pct = Math.min(norm * 100, 100);
-  vuFill.style.width = pct + '%';
-  if (norm <= 0) {
-    dbLabel.textContent = '-∞ dB';
-  } else {
-    const db = 20 * Math.log10(norm);
-    dbLabel.textContent = db.toFixed(1) + ' dB';
-  }
-}
-
-function drawWave(buffer) {
-  const dpr = window.devicePixelRatio || 1;
-  const w   = canvas.width  = canvas.offsetWidth  * dpr;
-  const h   = canvas.height = canvas.offsetHeight * dpr;
-  cctx.clearRect(0, 0, w, h);
-  cctx.beginPath();
-  for (let i = 0; i < buffer.length; i++) {
-    const x = (i / buffer.length) * w;
-    const y = (buffer[i] * 0.5 + 0.5) * h;
-    i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
-  }
-  cctx.strokeStyle = '#00e5ff'; cctx.lineWidth = 1.5 * dpr; cctx.stroke();
-}
-
-// FIX 6 : Math.min/max manuels pour éviter spread stack overflow sur grands tableaux
-function drawAcorrGraph(vals, pIdx) {
-  const dpr = window.devicePixelRatio || 1;
-  const w   = acCanvas.width  = acCanvas.offsetWidth  * dpr;
-  const h   = acCanvas.height = acCanvas.offsetHeight * dpr;
-  acCtx.clearRect(0, 0, w, h);
-
-  let minV = vals[0], maxV = vals[0];
-  for (let i = 1; i < vals.length; i++) {
-    if (vals[i] < minV) minV = vals[i];
-    if (vals[i] > maxV) maxV = vals[i];
-  }
-  const range = maxV - minV || 1;
-
-  acCtx.beginPath();
-  for (let i = 0; i < vals.length; i++) {
-    const x = (i / (vals.length - 1)) * w;
-    const y = h - ((vals[i] - minV) / range) * h * 0.9 - h * 0.05;
-    i === 0 ? acCtx.moveTo(x, y) : acCtx.lineTo(x, y);
-  }
-  acCtx.strokeStyle = '#00e5ff'; acCtx.stroke();
-
-  const px = (pIdx / (vals.length - 1)) * w;
-  const py = h - ((vals[pIdx] - minV) / range) * h * 0.9 - h * 0.05;
-  acCtx.beginPath(); acCtx.arc(px, py, 4 * dpr, 0, Math.PI * 2);
-  acCtx.fillStyle = '#39ff8a'; acCtx.fill();
-}
-
-// FIX (Beat Grid) : mise à jour de la grille circulaire à chaque beat
-function updateBeatGrid() {
-  histDots[beatGridPtr % HIST_COUNT].classList.add('active');
-  // éteindre le dot le plus ancien (un tour de retard)
-  histDots[(beatGridPtr + 1) % HIST_COUNT].classList.remove('active');
-  beatGridPtr = (beatGridPtr + 1) % HIST_COUNT;
-}
-
 function triggerBeat(now) {
-  lastBeat = lastOnsetTime = now;
-  clearTimeout(flashTimeout);
-  beatFlash.style.opacity = '1';
-  flashTimeout = setTimeout(() => beatFlash.style.opacity = '0', 80);
+  if (lastOnsetTime > 0) {
+    const delta = now - lastOnsetTime;
+    
+    // On ne garde que les intervalles réalistes (30 à 250 BPM)
+    if (delta > 240 && delta < 2000) {
+      intervals.push(delta);
+      if (intervals.length > 8) intervals.shift(); // On garde les 8 derniers coups
 
-  // FIX (Beat Grid) : allumer le prochain dot
-  updateBeatGrid();
-
-  beatTimes.push(now);
-  if (beatTimes.length > 24) beatTimes.shift();
-  if (beatTimes.length >= 6) {
-    let intervals = [];
-    for (let i = 1; i < beatTimes.length; i++) intervals.push(beatTimes[i] - beatTimes[i - 1]);
-    const avgInt = avg(intervals);
-    const bpm    = 60000 / avgInt;
-    smoothedBpm  = smoothedBpm === null ? bpm : SMOOTH * smoothedBpm + (1 - SMOOTH) * bpm;
-    bpmEl.textContent = Math.round(smoothedBpm);
-    setUIState('tracking');
+      // --- FILTRE MÉDIAN ---
+      const sorted = [...intervals].sort((a, b) => a - b);
+      const medianDelta = sorted[Math.floor(sorted.length / 2)];
+      
+      const rawBpm = 60000 / medianDelta;
+      displayBpm(rawBpm);
+    }
   }
+  
+  lastOnsetTime = now;
+  visualFlash(); // Ta fonction de flash visuel
 }
+
+function displayBpm(val) {
+  const el = document.getElementById('bpm');
+  // Lissage léger pour ne pas que le chiffre change trop vite
+  let currentDisplay = parseFloat(el.innerText) || val;
+  let finalBpm = currentDisplay * SMOOTH + val * (1 - SMOOTH);
+  
+  el.innerText = Math.round(finalBpm);
+}
+
+// ============================================================
+// VISUELS
+// ============================================================
+function updateUI(energy, data) {
+  // Update du VU Meter
+  const percent = Math.min(100, (energy / 255) * 100);
+  document.getElementById('vu-fill').style.width = percent + '%';
+  
+  // Ici tu peux remettre ton code de dessin de l'oscilloscope (wave)
+}
+
+function visualFlash() {
+  const flash = document.getElementById('beat-flash');
+  flash.style.opacity = '1';
+  setTimeout(() => flash.style.opacity = '0', 100);
+}
+
 </script>
 
 </body>
