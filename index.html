@@ -676,7 +676,6 @@ const CONFIRM_TOLERANCE = 2;    // ±2 BPM = même candidat
 // ── SILENCE DETECTION ──
 let silenceStartTime     = 0;
 const SILENCE_TIMEOUT_MS = 2000;
-let noiseFloor           = 0.002; // plancher dynamique, se calibre en live
 
 // ── BPM HISTORY (5 min rolling) ──
 const BPM_HIST_WIN_MS = 5 * 60 * 1000; // 5 minutes
@@ -1074,26 +1073,15 @@ function processMusic() {
   updateNoveltyBuffer(novelty, now);
   detectNoveltyPeaks(now);
 
-// 4. Détection de silence et logique de confirmation du BPM
-  // Mise à jour du plancher de bruit (dérive lente vers le bas)
-  noiseFloor = 0.995 * noiseFloor + 0.005 * Math.min(totalFlux, noiseFloor * 8);
-  const silenceThresh = Math.max(noiseFloor * 4, 0.006);
-
+  // 4. Détection de silence et logique de confirmation du BPM
   let newBpm = null;
-  if (totalFlux < silenceThresh) {
+  if (totalFlux < 0.01) {
     if (silenceStartTime === 0) silenceStartTime = now;
     if (now - silenceStartTime > SILENCE_TIMEOUT_MS) {
       bpmEl.classList.add('dim');
       bpmEl.classList.remove('locked', 'pulsing');
       setUIState('silence');
       stopMetronome();
-      // Soft reset : oublier les beats périmés pour ne pas hériter d'un faux BPM
-      noveltyBeatTimes    = [];
-      noveltySmoothedBpm  = null;
-      noveltyLastPeakTime = 0;
-      confirmedBpm        = null;
-      candidateBpm        = null;
-      candidateFirstSeen  = 0;
     }
   } else {
     if (silenceStartTime !== 0) {
@@ -1309,53 +1297,33 @@ function computeNoveltyBPM() {
     if (idx >= 0 && idx < N) bins[idx] = Math.max(bins[idx], p.value * weight);
   }
 
-const lagMin = Math.floor(60000 / 180 / BIN_MS);
+  const lagMin = Math.floor(60000 / 180 / BIN_MS);
   const lagMax = Math.ceil (60000 /  60 / BIN_MS);
   let bestLag = -1, bestCorr = -Infinity;
-  const corrValues = new Float32Array(lagMax + 1);
 
   for (let lag = lagMin; lag <= lagMax; lag++) {
     let corr = 0;
     const count = N - lag;
     for (let i = 0; i < count; i++) corr += bins[i] * bins[i + lag];
-    corrValues[lag] = corr /= count;
+    corr /= count;
     if (corr > bestCorr) { bestCorr = corr; bestLag = lag; }
   }
 
   if (bestLag < 0 || bestCorr < 1e-6) return null;
 
-  // Le pic doit émerger significativement du fond — sinon c'est du bruit
-  let meanCorr = 0;
-  for (let lag = lagMin; lag <= lagMax; lag++) meanCorr += corrValues[lag];
-  meanCorr /= (lagMax - lagMin + 1);
-  if (bestCorr < meanCorr * 1.8) return null;
-
-  // Interpolation parabolique → précision sub-bin (~±0.5 BPM au lieu de ±5 BPM)
-  let fracLag = bestLag;
-  if (bestLag > lagMin && bestLag < lagMax) {
-    const y0 = corrValues[bestLag - 1];
-    const y1 = corrValues[bestLag];
-    const y2 = corrValues[bestLag + 1];
-    const denom = y0 - 2 * y1 + y2;
-    if (denom < 0) fracLag = bestLag + 0.5 * (y0 - y2) / denom;
-  }
-
-  let bpm = 60000 / (fracLag * BIN_MS);
+  let bpm = 60000 / (bestLag * BIN_MS);
   while (bpm > 180) bpm /= 2;
   while (bpm < 60)  bpm *= 2;
   if (bpm < 60 || bpm > 180) return null;
-if (noveltyBeatTimes.length >= 4) {
+
+  if (noveltyBeatTimes.length >= 4) {
     const intervals = [];
     for (let i = 1; i < noveltyBeatTimes.length; i++) {
       const iv = noveltyBeatTimes[i] - noveltyBeatTimes[i-1];
       if (iv > 200 && iv < 1500) intervals.push(iv);
     }
     if (intervals.length >= 3) {
-      const medIv = median(intervals);
-      // Coefficient de variation : si les beats sont trop irréguliers → bruit → abandon
-      const cv = Math.sqrt(intervals.reduce((s, v) => s + (v - medIv) ** 2, 0) / intervals.length) / medIv;
-      if (cv > 0.35) return null;
-
+      const medIv   = median(intervals);
       const bpmPeak = 60000 / medIv;
       if      (Math.abs(bpm - bpmPeak)       < 15) bpm = (bpm + bpmPeak) / 2;
       else if (Math.abs(bpm * 2 - bpmPeak)   < 15) bpm = (bpm * 2 + bpmPeak) / 2;
@@ -1363,14 +1331,9 @@ if (noveltyBeatTimes.length >= 4) {
     }
   }
 
-if (noveltySmoothedBpm === null) {
-    noveltySmoothedBpm = bpm;
-  } else {
-    // Alpha adaptatif : plus réactif si grand écart, plus stable si on est proche
-    const delta = Math.abs(bpm - noveltySmoothedBpm);
-    const alpha = delta > 6 ? 0.35 : 0.18;
-    noveltySmoothedBpm = (1 - alpha) * noveltySmoothedBpm + alpha * bpm;
-  }
+  noveltySmoothedBpm = noveltySmoothedBpm === null
+    ? bpm
+    : 0.80 * noveltySmoothedBpm + 0.20 * bpm;
 
   return Math.round(noveltySmoothedBpm);
 }
