@@ -756,7 +756,7 @@ const CONFIRM_TOLERANCE = 2;    // ±2 BPM = même candidat
 let silenceStartTime     = 0;
 const SILENCE_TIMEOUT_MS = 2000;
 let fluxPeak             = 0;       // max lissé de acFluxSmooth — référence dynamique
-const SILENCE_RATIO      = 0.12;    // silence si flux < 12% du pic observé
+const SILENCE_RATIO      = 0.2;    // silence si flux < 12% du pic observé
 const FLUX_PEAK_DECAY    = 0.9998;  // descend très lentement (s'adapte aux pauses longues)
 
 // ── BPM HISTORY (5 min rolling) ──
