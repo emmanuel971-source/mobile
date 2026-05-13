@@ -490,6 +490,55 @@ html, body {
 }
 #btn-reset:active { color: var(--label); transform: translateY(1px); }
 
+/* ── GENRE MODE SELECTOR ── */
+.genre-panel {
+  background: var(--deep);
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--lo);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.genre-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: var(--hi);
+}
+.genre-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 4px; color: var(--label-sub);
+}
+.genre-buttons {
+  display: flex; gap: 8px;
+}
+.genre-btn {
+  flex: 1;
+  padding: 9px 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--mid);
+  background: transparent;
+  color: var(--label-dim);
+  transition: all .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.genre-btn.active {
+  background: rgba(93,187,245,0.12);
+  color: var(--ice);
+  border-color: rgba(93,187,245,0.40);
+  box-shadow: 0 0 12px rgba(93,187,245,0.15);
+}
+.genre-btn:active { opacity: 0.7; }
+.genre-hint {
+  font-size: 9px; letter-spacing: 1px;
+  color: var(--label-dim);
+  min-height: 12px;
+  transition: opacity .2s;
+}
+
 /* ── FOOTER ── */
 .rack-footer {
   background: linear-gradient(180deg, var(--footer-grad-top), var(--footer-grad-bot));
@@ -543,6 +592,7 @@ html, body {
       <button class="debug-btn" onclick="toggleDebug()">FERMER</button>
     </div>
     <div class="debug-grid">
+      <div class="debug-row"><span class="debug-key">GENRE</span><span class="debug-val" id="dbg-genre">ELECTRO</span></div>
       <div class="debug-row"><span class="debug-key">PEAKS</span><span class="debug-val" id="dbg-peaks">0</span></div>
       <div class="debug-row"><span class="debug-key">CONFIRM</span><span class="debug-val" id="dbg-confirm">—</span></div>
       <div class="debug-row"><span class="debug-key">CANDIDATE</span><span class="debug-val" id="dbg-candidate">—</span></div>
@@ -552,6 +602,8 @@ html, body {
       <div class="debug-row"><span class="debug-key">SPAN</span><span class="debug-val" id="dbg-span">0 s</span></div>
       <div class="debug-row"><span class="debug-key">RAW BPM</span><span class="debug-val" id="dbg-raw">—</span></div>
       <div class="debug-row"><span class="debug-key">SMOOTH</span><span class="debug-val" id="dbg-smooth">—</span></div>
+      <div class="debug-row"><span class="debug-key">FLUX</span><span class="debug-val" id="dbg-flux">—</span></div>
+      <div class="debug-row"><span class="debug-key">PEAK/THR</span><span class="debug-val" id="dbg-thresh">—</span></div>
     </div>
     <div class="debug-sliders">
       <div class="debug-slider-row">
@@ -588,6 +640,16 @@ html, body {
     <canvas id="novelty-canvas"></canvas>
   </div>
 
+  <!-- GENRE MODE SELECTOR -->
+  <div class="genre-panel">
+    <div class="genre-label">GENRE FILTER</div>
+    <div class="genre-buttons">
+      <button class="genre-btn active" id="genre-electro" onclick="setGenre('electro')">⚡ ELECTRO / EDM</button>
+      <button class="genre-btn"        id="genre-rock"    onclick="setGenre('rock')">🎸 ROCK / LIVE</button>
+    </div>
+    <div class="genre-hint" id="genre-hint">Réponse plate — optimisé kick & basses propres</div>
+  </div>
+
   <!-- BUTTONS -->
   <div class="btn-panel">
     <button id="btn-toggle" onclick="toggle()">▶  START</button>
@@ -598,7 +660,7 @@ html, body {
   <!-- FOOTER -->
   <div class="rack-footer">
     <span id="footer-label">MULTI-BAND · NOVELTY CURVE · AUTOCORR</span>
-    <span>v9.0</span>
+    <span>v10.0</span>
   </div>
 
 </div>
@@ -609,6 +671,8 @@ html, body {
 // AUDIO CONTEXT
 // ============================================================
 let ctx, analyser, src, stream;
+let filterLowShelf  = null;   // boost graves (mode ROCK)
+let filterHighShelf = null;   // coupe aigus  (mode ROCK)
 let running = false;
 let currentMode = 'music';
 
@@ -627,6 +691,7 @@ const bpmHistCtx    = bpmHistCanvas.getContext('2d');
 
 // Debug refs
 const dbgPanel     = document.getElementById('debug-panel');
+const dbgGenre     = document.getElementById('dbg-genre');
 const dbgPeaks     = document.getElementById('dbg-peaks');
 const dbgConfirm   = document.getElementById('dbg-confirm');
 const dbgCandidate = document.getElementById('dbg-candidate');
@@ -636,7 +701,21 @@ const dbgCalib     = document.getElementById('dbg-calib');
 const dbgSpan      = document.getElementById('dbg-span');
 const dbgRaw       = document.getElementById('dbg-raw');
 const dbgSmooth    = document.getElementById('dbg-smooth');
+const dbgFlux      = document.getElementById('dbg-flux');
+const dbgThresh    = document.getElementById('dbg-thresh');
 let debugVisible   = false;
+
+// ============================================================
+// GENRE MODE — ELECTRO (flat) vs ROCK (filtered)
+// ============================================================
+let currentGenre = 'electro'; // 'electro' | 'rock'
+
+// Poids des bandes selon le genre
+// ROCK : on réduit HIGH (pollué par distorsion/cymbales) et booste KICK
+const BAND_WEIGHTS = {
+  electro: { KICK: 1.7, LOW: 1.0, MID: 1.3, HIGH: 1.6 },
+  rock:    { KICK: 2.2, LOW: 1.2, MID: 0.9, HIGH: 0.4 }
+};
 
 // ============================================================
 // MULTI-BAND CONFIG
@@ -676,6 +755,9 @@ const CONFIRM_TOLERANCE = 2;    // ±2 BPM = même candidat
 // ── SILENCE DETECTION ──
 let silenceStartTime     = 0;
 const SILENCE_TIMEOUT_MS = 2000;
+let fluxPeak             = 0;       // max lissé de acFluxSmooth — référence dynamique
+const SILENCE_RATIO      = 0.12;    // silence si flux < 12% du pic observé
+const FLUX_PEAK_DECAY    = 0.9998;  // descend très lentement (s'adapte aux pauses longues)
 
 // ── BPM HISTORY (5 min rolling) ──
 const BPM_HIST_WIN_MS = 5 * 60 * 1000; // 5 minutes
@@ -733,6 +815,10 @@ let acSampleInterval = null;
 function createBpmWorker() {
   const code = `
 const BANDS = ${JSON.stringify(BANDS.map(b => ({ name: b.name })))};
+const BAND_WEIGHTS_ELECTRO = ${JSON.stringify(BAND_WEIGHTS.electro)};
+const BAND_WEIGHTS_ROCK    = ${JSON.stringify(BAND_WEIGHTS.rock)};
+
+let genre = 'electro';
 let states = BANDS.map(() => ({ prev:0, floorSlow:0, lastOnsetTime:0, k:3.5, onsets:[] }));
 let calibrationData = [];
 let isCalibrated    = false;
@@ -743,6 +829,10 @@ self.onmessage = function(e) {
     calibrationData = e.data.data;
     runCalibration();
     isCalibrated = true;
+    return;
+  }
+  if (type === 'setGenre') {
+    genre = e.data.genre;
     return;
   }
   if (type === 'sample') {
@@ -759,12 +849,20 @@ self.onmessage = function(e) {
 };
 
 function processSample(bandFluxes, time) {
+  // En mode ROCK, le floorSlow descend plus vite (0.985 vs 0.992)
+  // pour ne pas laisser le plancher monter sur un signal continu fuzzy.
+  const floorDecay = (genre === 'rock') ? 0.985 : 0.992;
+  const weights    = (genre === 'rock') ? BAND_WEIGHTS_ROCK : BAND_WEIGHTS_ELECTRO;
+  const bandNames  = ['KICK','LOW','MID','HIGH'];
+
   for (let b = 0; b < BANDS.length; b++) {
-    const flux = bandFluxes[b] || 0;
+    // Applique le poids genre au flux reçu (les weights côté main thread
+    // sont déjà genre-aware, mais on re-pondère ici pour le threshold)
+    const flux = (bandFluxes[b] || 0);
     const s    = states[b];
     const rise = Math.max(0, flux - s.prev);
     s.prev = flux;
-    s.floorSlow = 0.008 * rise + 0.992 * s.floorSlow;
+    s.floorSlow = floorDecay * s.floorSlow + (1 - floorDecay) * rise;
     const threshold = Math.max(s.floorSlow * s.k, 0.006);
     if (rise > threshold && time - s.lastOnsetTime > 130) {
       const interval = s.onsets.length ? time - s.onsets.at(-1).time : null;
@@ -843,6 +941,43 @@ function stddev(a) {
 }
 
 // ============================================================
+// GENRE SWITCH
+// ============================================================
+
+// Retourne le multiplicateur de poids pour la bande b selon le genre actif
+function getGenreWeight(bandIdx) {
+  const names  = ['KICK', 'LOW', 'MID', 'HIGH'];
+  const w = BAND_WEIGHTS[currentGenre];
+  // On normalise par rapport au poids ELECTRO pour ne pas changer l'amplitude globale
+  const wBase = BAND_WEIGHTS['electro'];
+  return w[names[bandIdx]] / wBase[names[bandIdx]];
+}
+
+function setGenre(genre) {
+  currentGenre = genre;
+
+  // Update UI buttons
+  document.getElementById('genre-electro').classList.toggle('active', genre === 'electro');
+  document.getElementById('genre-rock').classList.toggle('active', genre === 'rock');
+
+  // Update hint text
+  const hints = {
+    electro: 'Réponse plate — optimisé kick & basses propres',
+    rock:    'Boost graves +8dB · Coupe aigus -14dB · floorSlow réactif'
+  };
+  document.getElementById('genre-hint').textContent = hints[genre];
+
+  // Si une session est active, on met à jour les filtres en temps réel
+  if (running && filterLowShelf && filterHighShelf) {
+    filterLowShelf.gain.value  = (genre === 'rock') ? 8   : 0;
+    filterHighShelf.gain.value = (genre === 'rock') ? -14 : 0;
+  }
+
+  // Notifier le Worker du nouveau genre
+  if (bpmWorker) bpmWorker.postMessage({ type: 'setGenre', genre });
+}
+
+// ============================================================
 // START / STOP
 // ============================================================
 
@@ -896,6 +1031,27 @@ try {
   }
   src      = ctx.createMediaStreamSource(stream);
   analyser = ctx.createAnalyser();
+
+  // ── EQ FILTERS ──
+  // Deux BiquadFilter en série entre src et analyser.
+  // En mode ELECTRO : gains à 0 → chaîne transparente, son non altéré.
+  // En mode ROCK    : lowShelf +8dB@120Hz + highShelf -14dB@3kHz
+  //   → renforce kick/basses, atténue distorsion harmonique et cymbales.
+  filterLowShelf  = ctx.createBiquadFilter();
+  filterLowShelf.type            = 'lowshelf';
+  filterLowShelf.frequency.value = 120;
+  filterLowShelf.gain.value      = (currentGenre === 'rock') ? 8 : 0;
+
+  filterHighShelf = ctx.createBiquadFilter();
+  filterHighShelf.type            = 'highshelf';
+  filterHighShelf.frequency.value = 3000;
+  filterHighShelf.gain.value      = (currentGenre === 'rock') ? -14 : 0;
+
+  // Chaîne : src → lowShelf → highShelf → analyser
+  src.connect(filterLowShelf);
+  filterLowShelf.connect(filterHighShelf);
+  filterHighShelf.connect(analyser);
+
   if (currentMode === 'music') {
     acFluxOnset    = 0;
     analyser.fftSize = AC_FFT_SIZE;
@@ -907,11 +1063,12 @@ try {
     calibrationStart = performance.now();
     fluxBuffer       = [];
     bpmWorker        = createBpmWorker();
+    // Transmet le genre actif au worker dès sa création
+    bpmWorker.postMessage({ type: 'setGenre', genre: currentGenre });
   } else {
     analyser.fftSize = 2048;
     _tapFreqBins     = new Uint8Array(analyser.frequencyBinCount);
   }
-  src.connect(analyser);
   running = true;
   ledPower.classList.add('on');
   btnToggle.textContent = '■  STOP';
@@ -942,10 +1099,14 @@ function resetState() {
   // Gate + silence
   confirmedBpm = null; candidateBpm = null; candidateFirstSeen = 0;
   silenceStartTime = 0;
+  fluxPeak = 0;
   stopMetronome();
   bpmHistory = [];
 
-  if (bpmWorker) bpmWorker.postMessage({ type: 'reset' });
+  if (bpmWorker) {
+    bpmWorker.postMessage({ type: 'reset' });
+    bpmWorker.postMessage({ type: 'setGenre', genre: currentGenre });
+  }
 
   bpmEl.textContent = '--';
   bpmEl.classList.remove('locked', 'dim', 'pulsing');
@@ -1062,7 +1223,7 @@ function processMusic() {
       bandPrevMags[b][i] = mag;
       if (d > 0) { flux += d; count++; }
     }
-    bandFluxes[b] = count ? (flux / count) * band.weight : 0;
+    bandFluxes[b] = count ? (flux / count) * band.weight * getGenreWeight(b) : 0;
   }
 
   const totalFlux = bandFluxes.reduce((a, b) => a + b, 0);
@@ -1075,10 +1236,18 @@ function processMusic() {
 
 // 4. Détection de silence et logique de confirmation du BPM
   let newBpm = null;
-  
-  // On redescend le seuil très bas (ex: 0.015). 
-  // Le flux mesure les impacts, donc il faut être tolérant pendant les breaks musicaux.
-  const NOISE_THRESHOLD = 0.015; 
+
+  // Seuil RELATIF adaptatif : on mémorise le pic de flux observé pendant la musique
+  // et on considère "silence" quand le signal tombe sous SILENCE_RATIO (12%) de ce pic.
+  // → S'auto-calibre en mode ROCK (boost +8dB → pic plus élevé → seuil plus élevé aussi).
+  // → Immunisé contre les bruits de fond constants (ventilo, voix…).
+  // fluxPeak monte instantanément sur tout nouveau max, descend très lentement.
+  if (acFluxSmooth > fluxPeak) {
+    fluxPeak = acFluxSmooth;
+  } else {
+    fluxPeak = Math.max(fluxPeak * FLUX_PEAK_DECAY, 0.008); // plancher minimal anti-division
+  }
+  const NOISE_THRESHOLD = fluxPeak * SILENCE_RATIO;
 
   if (acFluxSmooth < NOISE_THRESHOLD) {
     if (silenceStartTime === 0) silenceStartTime = now;
@@ -1189,6 +1358,7 @@ function updateDebug(now, rawBpm) {
   const gateAge    = candidateBpm !== null ? Math.round(now - candidateFirstSeen) : 0;
   const gateLeft   = Math.max(0, requiredMs - gateAge);
 
+  dbgGenre.textContent     = currentGenre.toUpperCase();
   dbgPeaks.textContent     = noveltyBeatTimes.length;
   dbgConfirm.textContent   = confirmedBpm !== null ? confirmedBpm + ' BPM' : '—';
   dbgCandidate.textContent = candidateBpm !== null ? candidateBpm + ' BPM' : '—';
@@ -1200,6 +1370,13 @@ function updateDebug(now, rawBpm) {
   dbgSpan.textContent      = span.toFixed(1) + ' s';
   dbgRaw.textContent       = rawBpm !== null && rawBpm !== undefined ? rawBpm + ' BPM' : '—';
   dbgSmooth.textContent    = noveltySmoothedBpm !== null ? noveltySmoothedBpm.toFixed(1) : '—';
+  dbgFlux.textContent      = acFluxSmooth.toFixed(4);
+  const dynThr = fluxPeak * SILENCE_RATIO;
+  dbgThresh.textContent    = fluxPeak.toFixed(4) + ' / ' + dynThr.toFixed(4);
+  // Colorer en rouge si on est proche du seuil (musique quasi-silencieuse)
+  dbgFlux.classList.remove('warn', 'bad');
+  if (acFluxSmooth < dynThr * 1.5) dbgFlux.classList.add('warn');
+  if (acFluxSmooth < dynThr)       dbgFlux.classList.add('bad');
 
   colorClass(dbgGate, gateLeft, requiredMs * 0.5, requiredMs * 0.9);
   colorClass(dbgPeaks, 4 - noveltyBeatTimes.length, 1, 3);
