@@ -1073,20 +1073,39 @@ function processMusic() {
   updateNoveltyBuffer(novelty, now);
   detectNoveltyPeaks(now);
 
-  // 4. Détection de silence et logique de confirmation du BPM
+// 4. Détection de silence et logique de confirmation du BPM
   let newBpm = null;
-  if (totalFlux < 0.01) {
+  
+  // On redescend le seuil très bas (ex: 0.015). 
+  // Le flux mesure les impacts, donc il faut être tolérant pendant les breaks musicaux.
+  const NOISE_THRESHOLD = 0.015; 
+
+  if (acFluxSmooth < NOISE_THRESHOLD) {
     if (silenceStartTime === 0) silenceStartTime = now;
     if (now - silenceStartTime > SILENCE_TIMEOUT_MS) {
-      bpmEl.classList.add('dim');
+      // MISE EN PAUSE VISUELLE
+      bpmEl.textContent = '--'; 
       bpmEl.classList.remove('locked', 'pulsing');
+      bpmEl.classList.add('dim');
       setUIState('silence');
       stopMetronome();
+      
+      // ON NE VIDE PLUS noveltyHistory NI noveltyBeatTimes !
+      // Cela évite que la courbe ne disparaisse et garde le contexte pour la reprise.
+      // On réinitialise uniquement les validateurs d'affichage :
+      candidateBpm = null;
+      confirmedBpm = null;
+      noveltySmoothedBpm = null;
     }
   } else {
     if (silenceStartTime !== 0) {
+      // LE SON REPREND
       silenceStartTime = 0;
       bpmEl.classList.remove('dim');
+      if (confirmedBpm === null) {
+        bpmEl.classList.add('pulsing'); 
+        setUIState('tracking');
+      }
     }
 
     newBpm = computeNoveltyBPM();
@@ -1094,7 +1113,6 @@ function processMusic() {
       const sameCandidate = candidateBpm !== null && Math.abs(newBpm - candidateBpm) <= CONFIRM_TOLERANCE;
 
       if (!sameCandidate) {
-        // Nouveau candidat — repart le compteur seulement si différent du BPM déjà affiché
         const sameAsConfirmed = confirmedBpm !== null && Math.abs(newBpm - confirmedBpm) <= CONFIRM_TOLERANCE;
         if (!sameAsConfirmed) {
           candidateBpm = newBpm;
@@ -1102,7 +1120,6 @@ function processMusic() {
         }
       }
 
-      // Délai à appliquer : court si rien n'est affiché, long pour remplacer
       const requiredMs = confirmedBpm === null ? LOCK_MS : CHANGE_MS;
       const candidateAge = now - candidateFirstSeen;
 
