@@ -26,19 +26,33 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* ── DARK THEME — Anthracite métallique ── */
-  --rack-bg:    #1a1c21;
-  --face:       #23262d;
-  --deep:       #1d2025;
-  --inset:      #181a1f;
-  --mid:        #2e3340;
-  --hi:         rgba(255,255,255,0.13);
-  --lo:         rgba(0,0,0,0.50);
+  /* ── DARK THEME — Gunmetal / Aluminium Brossé ── */
+  --rack-bg:    #15171a; /* Fond de page très sombre pour faire ressortir le rack */
+  --face:       #343842; /* Base métallique plus claire */
+  --deep:       #24272e;
+  --inset:      #1a1c22;
+  --mid:        #4e5462;
+  --hi:         rgba(255,255,255,0.20); /* Highlights renforcés */
+  --lo:         rgba(0,0,0,0.70);
 
-  /* Reflets métalliques */
-  --metal-shine: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
-  --metal-edge:  rgba(255,255,255,0.10);
+  /* Textures et Reflets du Rack */
+  --metal-base: linear-gradient(180deg, #3c414d 0%, #2b2f38 100%);
+  --metal-shine: linear-gradient(105deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.02) 25%, 
+    rgba(255,255,255,0.12) 45%, 
+    rgba(255,255,255,0) 52%, 
+    rgba(255,255,255,0) 100%
+  );
+  --metal-brushed: repeating-linear-gradient(
+    90deg, 
+    rgba(0,0,0,0.05) 0px, 
+    rgba(0,0,0,0.05) 1px, 
+    transparent 1px, 
+    transparent 2px
+  );
 
+  /* Le reste de tes couleurs (Gold, Ice, Mint, Red, etc.) reste inchangé... */
   --gold:       #f0a030;
   --gold-glow:  rgba(240,160,48,0.40);
   --gold-dim:   #3d2808;
@@ -50,7 +64,6 @@
   --mint-dim:   #032e1e;
   --mint-glow:  rgba(0,229,160,0.35);
 
-  /* Dark theme : locked = mint classique, novelty = vert fluo */
   --locked-color:      #00e5a0;
   --locked-glow:       rgba(0,229,160,0.35);
   --locked-bg:         rgba(0,229,160,0.10);
@@ -61,14 +74,14 @@
   --red-dim:    #2d040a;
 
   --label:      #d8e0ee;
-  --label-sub:  #7a8ba8;
-  --label-dim:  #3d4558;
+  --label-sub:  #8796b0; /* Légèrement éclairci pour lisibilité sur le métal */
+  --label-dim:  #4f586c;
 
-  --header-grad-top: #2e323c;
-  --header-grad-bot: #1e2228;
-  --footer-grad-top: #1e2228;
-  --footer-grad-bot: #181c22;
-  --bpm-scanline: rgba(0,0,0,0.12);
+  --header-grad-top: #363b45;
+  --header-grad-bot: #22262d;
+  --footer-grad-top: #22262d;
+  --footer-grad-bot: #1a1d22;
+  --bpm-scanline: rgba(0,0,0,0.18);
 }
 
 /* ── LIGHT THEME ── */
@@ -130,29 +143,28 @@ html, body {
 .rack {
   width: 100%;
   max-width: 100%;
-  background: var(--face);
+  background: var(--metal-base); /* Utilise la nouvelle base dégradée */
   display: flex;
   flex-direction: column;
   box-shadow:
-    0 24px 64px rgba(0,0,0,0.90),
-    0  0   0 1px rgba(255,255,255,0.04);
+    0 24px 64px rgba(0,0,0,0.95),
+    0  0   0 1px rgba(255,255,255,0.06); /* Liseré clair autour de la coque */
   position: relative;
 }
 
-/* Reflet métallique diagonal en mode dark (absent en light) */
+/* Texture et reflet (uniquement en dark mode) */
 body:not(.light) .rack::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255,255,255,0.04) 0%,
-    transparent 40%,
-    rgba(0,0,0,0.12) 100%
-  );
+  background:
+    var(--metal-shine),    /* Couche de brillance */
+    var(--metal-brushed);  /* Couche de rayures métalliques */
 }
+
+/* On s'assure que le contenu reste au-dessus du vernis */
 body:not(.light) .rack > * { position: relative; z-index: 1; }
 
 /* Chrome shelf separator on each section */
@@ -378,9 +390,8 @@ body:not(.light) .rack-header {
 }
 .genre-3way-btn {
   flex: 1;
-  padding: 10px 6px;
+  padding: 14px 6px; /* Plus d'espace vertical sans les icônes */
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11px; font-weight: 700; letter-spacing: 1px;
   background: transparent;
   border: none;
   color: var(--label-dim);
@@ -389,10 +400,17 @@ body:not(.light) .rack-header {
   -webkit-tap-highlight-color: transparent;
   position: relative;
   z-index: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
 }
 .genre-3way-btn .g3-icon { font-size: 15px; line-height: 1; }
-.genre-3way-btn .g3-label { font-size: 9px; letter-spacing: 2px; }
+.genre-3way-btn .g3-label { 
+  font-size: 13px; /* Typo plus grande */
+  font-weight: 700;
+  letter-spacing: 3px; 
+}
 .genre-3way-btn + .genre-3way-btn {
   border-left: 1px solid var(--mid);
 }
@@ -702,18 +720,17 @@ body:not(.light) .rack-header {
       <button class="settings-close-btn" onclick="toggleSettings()">FERMER</button>
     </div>
     <div class="genre-switch-wrap">
-      <div class="settings-row-label">GENRE FILTER</div>
-      <div class="genre-3way">
-        <button class="genre-3way-btn active" id="genre-electro" data-genre="electro" onclick="setGenre('electro')">
-          <span class="g3-icon">⚡</span><span class="g3-label">ELECTRO</span>
-        </button>
-        <button class="genre-3way-btn" id="genre-rock" data-genre="rock" onclick="setGenre('rock')">
-          <span class="g3-icon">🎸</span><span class="g3-label">ROCK</span>
-        </button>
-        <button class="genre-3way-btn" id="genre-acoustic" data-genre="acoustic" onclick="setGenre('acoustic')">
-          <span class="g3-icon">🎹</span><span class="g3-label">ACOUSTIC</span>
-        </button>
-      </div>
+      <div class="settings-row-label">GENRE FILTER</div><div class="genre-3way">
+  <button class="genre-3way-btn active" id="genre-electro" data-genre="electro" onclick="setGenre('electro')">
+    <span class="g3-label">ELECTRO</span>
+  </button>
+  <button class="genre-3way-btn" id="genre-rock" data-genre="rock" onclick="setGenre('rock')">
+    <span class="g3-label">ROCK</span>
+  </button>
+  <button class="genre-3way-btn" id="genre-acoustic" data-genre="acoustic" onclick="setGenre('acoustic')">
+    <span class="g3-label">ACOUSTIC</span>
+  </button>
+</div>
       <div class="genre-hint-settings" id="genre-hint">Réponse plate — optimisé kick & basses propres</div>
     </div>
   </div>
