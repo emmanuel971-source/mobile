@@ -2,21 +2,42 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#08090b">
 <title>BPM Detector PRO</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- ═══ FONTS BUNDLE ═══
+     Coller ici les @font-face générés par l'outil de bundlisation (bundle-fonts.html).
+     Tant que ce bloc est vide, le <link> Google Fonts ci-dessous prend le relais.
+     Une fois les fonts bundlées, le lien GFonts est désactivé automatiquement. -->
+<style id="fonts-bundle">
+</style>
+<link id="gfonts-fallback" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script>
+/* Désactive le lien Google Fonts si le bundle est déjà renseigné */
+(function() {
+  const bundle = document.getElementById('fonts-bundle');
+  const fb     = document.getElementById('gfonts-fallback');
+  if (bundle && bundle.textContent.trim().length > 0 && fb) fb.disabled = true;
+})();
+</script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --rack-bg:    #08090b;
-  --face:       #0f1115;
-  --deep:       #0b0c0f;
-  --inset:      #060709;
-  --mid:        #1c2030;
-  --hi:         rgba(255,255,255,0.10);
-  --lo:         rgba(0,0,0,0.60);
+  /* ── DARK THEME — Anthracite métallique ── */
+  --rack-bg:    #1a1c21;
+  --face:       #23262d;
+  --deep:       #1d2025;
+  --inset:      #181a1f;
+  --mid:        #2e3340;
+  --hi:         rgba(255,255,255,0.13);
+  --lo:         rgba(0,0,0,0.50);
+
+  /* Reflets métalliques */
+  --metal-shine: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
+  --metal-edge:  rgba(255,255,255,0.10);
 
   --gold:       #f0a030;
   --gold-glow:  rgba(240,160,48,0.40);
@@ -39,15 +60,15 @@
   --red:        #ff4d5e;
   --red-dim:    #2d040a;
 
-  --label:      #dde4f0;
+  --label:      #d8e0ee;
   --label-sub:  #7a8ba8;
-  --label-dim:  #384050;
+  --label-dim:  #3d4558;
 
-  --header-grad-top: #252930;
-  --header-grad-bot: #151820;
-  --footer-grad-top: #14171d;
-  --footer-grad-bot: #0e1014;
-  --bpm-scanline: rgba(0,0,0,0.10);
+  --header-grad-top: #2e323c;
+  --header-grad-bot: #1e2228;
+  --footer-grad-top: #1e2228;
+  --footer-grad-bot: #181c22;
+  --bpm-scanline: rgba(0,0,0,0.12);
 }
 
 /* ── LIGHT THEME ── */
@@ -100,21 +121,39 @@ html, body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0 0 48px;
+  align-items: stretch;
+  padding: 0;
+  width: 100%;
 }
 
 /* ── RACK ── */
 .rack {
   width: 100%;
-  max-width: 430px;
+  max-width: 100%;
   background: var(--face);
   display: flex;
   flex-direction: column;
   box-shadow:
     0 24px 64px rgba(0,0,0,0.90),
     0  0   0 1px rgba(255,255,255,0.04);
+  position: relative;
 }
+
+/* Reflet métallique diagonal en mode dark (absent en light) */
+body:not(.light) .rack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.04) 0%,
+    transparent 40%,
+    rgba(0,0,0,0.12) 100%
+  );
+}
+body:not(.light) .rack > * { position: relative; z-index: 1; }
 
 /* Chrome shelf separator on each section */
 .rack-section {
@@ -181,7 +220,18 @@ html, body {
   box-shadow: 0 0 8px var(--mint), 0 0 20px var(--mint-glow);
 }
 
-/* ── BPM DISPLAY ── */
+/* Reflet métallique horizontal sur l'header en mode nuit */
+body:not(.light) .rack-header {
+  background: linear-gradient(180deg,
+    #353a44 0%,
+    #272c34 40%,
+    #1e2228 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.30),
+    0 2px 8px rgba(0,0,0,0.40);
+}
 .bpm-section {
   background: var(--inset);
   background-image:
@@ -272,42 +322,30 @@ html, body {
 .state-badge.tracking .state-dot { animation: blink .7s ease-in-out infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.10} }
 
-/* ── DEBUG PANEL ── */
-.debug-panel {
+/* ── SETTINGS PANEL ── */
+.settings-panel {
   background: var(--deep);
-  padding: 10px 16px 12px;
+  padding: 14px 16px 16px;
   border-bottom: 1px solid var(--lo);
   position: relative;
   display: none;
-  flex-direction: column; gap: 5px;
+  flex-direction: column; gap: 14px;
 }
-.debug-panel.visible { display: flex; }
-.debug-panel::before {
+.settings-panel.visible { display: flex; }
+.settings-panel::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 1px;
   background: var(--hi);
 }
-.debug-label {
+.settings-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.settings-section-label {
   font-size: 9px; font-weight: 700;
   letter-spacing: 4px; color: var(--gold);
-  margin-bottom: 2px;
 }
-.debug-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-}
-.debug-row {
-  display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 10px;
-}
-.debug-key { color: var(--label-sub); letter-spacing: 1px; }
-.debug-val { font-family: 'Orbitron', monospace; font-size: 10px; color: var(--ice); }
-.debug-val.warn { color: var(--gold); }
-.debug-val.bad  { color: var(--red); }
-.debug-btn {
-  align-self: flex-end;
+.settings-close-btn {
   font-family: 'Rajdhani', sans-serif;
   font-size: 9px; font-weight: 700; letter-spacing: 2px;
   padding: 4px 10px;
@@ -317,6 +355,72 @@ html, body {
   color: var(--label-dim);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+.settings-row-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 3px; color: var(--label-sub);
+  margin-bottom: 6px;
+}
+
+/* 3-way genre switch */
+.genre-switch-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.genre-3way {
+  display: flex;
+  background: var(--inset);
+  border: 1px solid var(--mid);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.genre-3way-btn {
+  flex: 1;
+  padding: 10px 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  background: transparent;
+  border: none;
+  color: var(--label-dim);
+  cursor: pointer;
+  transition: all .2s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.genre-3way-btn .g3-icon { font-size: 15px; line-height: 1; }
+.genre-3way-btn .g3-label { font-size: 9px; letter-spacing: 2px; }
+.genre-3way-btn + .genre-3way-btn {
+  border-left: 1px solid var(--mid);
+}
+.genre-3way-btn.active {
+  background: rgba(93,187,245,0.15);
+  color: var(--ice);
+  box-shadow: inset 0 0 12px rgba(93,187,245,0.10);
+}
+.genre-3way-btn.active[data-genre="rock"] {
+  background: rgba(255,77,94,0.12);
+  color: var(--red);
+  box-shadow: inset 0 0 12px rgba(255,77,94,0.10);
+}
+.genre-3way-btn.active[data-genre="acoustic"] {
+  background: rgba(0,229,160,0.12);
+  color: var(--mint);
+  box-shadow: inset 0 0 12px rgba(0,229,160,0.10);
+}
+.genre-hint-settings {
+  font-size: 9px; letter-spacing: 1px;
+  color: var(--label-dim);
+  min-height: 12px;
+  text-align: center;
+}
+
+/* ── DEBUG PANEL — kept hidden, IDs still exist for JS ── */
+.debug-panel {
+  display: none !important;
 }
 
 /* ── THEME SWITCH ── */
@@ -531,6 +635,12 @@ html, body {
   border-color: rgba(93,187,245,0.40);
   box-shadow: 0 0 12px rgba(93,187,245,0.15);
 }
+.genre-btn.active[data-genre="acoustic"] {
+  background: rgba(0,245,212,0.10);
+  color: var(--mint);
+  border-color: rgba(0,245,212,0.40);
+  box-shadow: 0 0 12px rgba(0,245,212,0.18);
+}
 .genre-btn:active { opacity: 0.7; }
 .genre-hint {
   font-size: 9px; letter-spacing: 1px;
@@ -548,7 +658,7 @@ html, body {
 .rack-footer span { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--label-dim); }
 </style>
 </head>
-<body>
+<body class="light">
 
 <div class="rack">
 
@@ -560,7 +670,7 @@ html, body {
     <div class="led-power" id="led-power"></div>
     <div class="theme-switch">
       <label class="theme-toggle" title="Mode clair / sombre">
-        <input type="checkbox" id="theme-chk" onchange="toggleTheme(this.checked)">
+        <input type="checkbox" id="theme-chk" checked onchange="toggleTheme(this.checked)">
         <div class="theme-track"></div>
         <div class="theme-knob">☀</div>
       </label>
@@ -585,7 +695,30 @@ html, body {
   <!-- VU / FLUX BAR — supprimé -->
   <!-- BEAT GRID / DOTS — supprimé -->
 
-  <!-- DEBUG PANEL -->
+  <!-- SETTINGS PANEL -->
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-panel-header">
+      <div class="settings-section-label">⚙ PARAMÈTRES</div>
+      <button class="settings-close-btn" onclick="toggleSettings()">FERMER</button>
+    </div>
+    <div class="genre-switch-wrap">
+      <div class="settings-row-label">GENRE FILTER</div>
+      <div class="genre-3way">
+        <button class="genre-3way-btn active" id="genre-electro" data-genre="electro" onclick="setGenre('electro')">
+          <span class="g3-icon">⚡</span><span class="g3-label">ELECTRO</span>
+        </button>
+        <button class="genre-3way-btn" id="genre-rock" data-genre="rock" onclick="setGenre('rock')">
+          <span class="g3-icon">🎸</span><span class="g3-label">ROCK</span>
+        </button>
+        <button class="genre-3way-btn" id="genre-acoustic" data-genre="acoustic" onclick="setGenre('acoustic')">
+          <span class="g3-icon">🎹</span><span class="g3-label">ACOUSTIC</span>
+        </button>
+      </div>
+      <div class="genre-hint-settings" id="genre-hint">Réponse plate — optimisé kick & basses propres</div>
+    </div>
+  </div>
+
+  <!-- DEBUG PANEL (conservé pour les refs JS) -->
   <div class="debug-panel" id="debug-panel">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div class="debug-label">⬡ DIAGNOSTIC</div>
@@ -640,27 +773,17 @@ html, body {
     <canvas id="novelty-canvas"></canvas>
   </div>
 
-  <!-- GENRE MODE SELECTOR -->
-  <div class="genre-panel">
-    <div class="genre-label">GENRE FILTER</div>
-    <div class="genre-buttons">
-      <button class="genre-btn active" id="genre-electro" onclick="setGenre('electro')">⚡ ELECTRO / EDM</button>
-      <button class="genre-btn"        id="genre-rock"    onclick="setGenre('rock')">🎸 ROCK / LIVE</button>
-    </div>
-    <div class="genre-hint" id="genre-hint">Réponse plate — optimisé kick & basses propres</div>
-  </div>
-
   <!-- BUTTONS -->
   <div class="btn-panel">
     <button id="btn-toggle" onclick="toggle()">▶  START</button>
     <button id="btn-reset"  onclick="resetState()">RESET</button>
-    <button id="btn-debug"  onclick="toggleDebug()" style="padding:17px 14px;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;border:1px solid var(--mid);border-radius:8px;background:transparent;color:var(--label-dim);cursor:pointer;-webkit-tap-highlight-color:transparent;">DBG</button>
+    <button id="btn-settings" onclick="toggleSettings()" style="padding:17px 14px;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;border:1px solid var(--mid);border-radius:8px;background:transparent;color:var(--label-dim);cursor:pointer;-webkit-tap-highlight-color:transparent;">⚙ SET</button>
   </div>
 
   <!-- FOOTER -->
   <div class="rack-footer">
-    <span id="footer-label">MULTI-BAND · NOVELTY CURVE · AUTOCORR</span>
-    <span>v10.0</span>
+    <span id="footer-label">MULTI-BAND · NOVELTY CURVE · AUTOCORR · ACOUSTIC</span>
+    <span>v10.1</span>
   </div>
 
 </div>
@@ -673,6 +796,7 @@ html, body {
 let ctx, analyser, src, stream;
 let filterLowShelf  = null;   // boost graves (mode ROCK)
 let filterHighShelf = null;   // coupe aigus  (mode ROCK)
+let filterBandpass  = null;   // bandpass 3.5kHz (mode ACOUSTIC)
 let running = false;
 let currentMode = 'music';
 
@@ -713,8 +837,9 @@ let currentGenre = 'electro'; // 'electro' | 'rock'
 // Poids des bandes selon le genre
 // ROCK : on réduit HIGH (pollué par distorsion/cymbales) et booste KICK
 const BAND_WEIGHTS = {
-  electro: { KICK: 1.7, LOW: 1.0, MID: 1.3, HIGH: 1.6 },
-  rock:    { KICK: 2.2, LOW: 1.2, MID: 0.9, HIGH: 0.4 }
+  electro:  { KICK: 1.7, LOW: 1.0, MID: 1.3, HIGH: 1.6 },
+  rock:     { KICK: 2.5, LOW: 1.4, MID: 0.75, HIGH: 0.25 },  // HIGH encore plus baissé
+  acoustic: { KICK: 0.6, LOW: 0.8, MID: 2.2,  HIGH: 2.8  }   // MID+HIGH dominants : cordes, piano, voix
 };
 
 // ============================================================
@@ -756,7 +881,7 @@ const CONFIRM_TOLERANCE = 2;    // ±2 BPM = même candidat
 let silenceStartTime     = 0;
 const SILENCE_TIMEOUT_MS = 2000;
 let fluxPeak             = 0;       // max lissé de acFluxSmooth — référence dynamique
-const SILENCE_RATIO      = 0.3;    // silence si flux < 12% du pic observé
+const SILENCE_RATIO      = 0.25;    // silence si flux < 25% du pic observé
 const FLUX_PEAK_DECAY    = 0.9998;  // descend très lentement (s'adapte aux pauses longues)
 
 // ── BPM HISTORY (5 min rolling) ──
@@ -815,9 +940,9 @@ let acSampleInterval = null;
 function createBpmWorker() {
   const code = `
 const BANDS = ${JSON.stringify(BANDS.map(b => ({ name: b.name })))};
-const BAND_WEIGHTS_ELECTRO = ${JSON.stringify(BAND_WEIGHTS.electro)};
-const BAND_WEIGHTS_ROCK    = ${JSON.stringify(BAND_WEIGHTS.rock)};
-
+const BAND_WEIGHTS_ELECTRO  = ${JSON.stringify(BAND_WEIGHTS.electro)};
+const BAND_WEIGHTS_ROCK     = ${JSON.stringify(BAND_WEIGHTS.rock)};
+const BAND_WEIGHTS_ACOUSTIC = ${JSON.stringify(BAND_WEIGHTS.acoustic)};
 let genre = 'electro';
 let states = BANDS.map(() => ({ prev:0, floorSlow:0, lastOnsetTime:0, k:3.5, onsets:[] }));
 let calibrationData = [];
@@ -849,34 +974,51 @@ self.onmessage = function(e) {
 };
 
 function processSample(bandFluxes, time) {
-  // En mode ROCK, le floorSlow descend plus vite (0.985 vs 0.992)
-  // pour ne pas laisser le plancher monter sur un signal continu fuzzy.
-  const floorDecay = (genre === 'rock') ? 0.985 : 0.992;
-  const weights    = (genre === 'rock') ? BAND_WEIGHTS_ROCK : BAND_WEIGHTS_ELECTRO;
-  const bandNames  = ['KICK','LOW','MID','HIGH'];
+  const isRock     = genre === 'rock';
+  const isAcoustic = genre === 'acoustic';
+
+  // floorDecays : contrôle la réactivité de l'enveloppe de bruit par bande
+  // acoustic : MID/HIGH très réactifs (transitoires courts), KICK quasi ignoré
+  const floorDecays = isRock
+    ? [0.978, 0.985, 0.988, 0.965]
+    : isAcoustic
+      ? [0.995, 0.990, 0.972, 0.968]   // KICK lent, MID+HIGH rapides
+      : [0.992, 0.992, 0.992, 0.980];
+
+  const weights = isRock ? BAND_WEIGHTS_ROCK
+                : isAcoustic ? BAND_WEIGHTS_ACOUSTIC
+                : BAND_WEIGHTS_ELECTRO;
 
   for (let b = 0; b < BANDS.length; b++) {
-    // Applique le poids genre au flux reçu (les weights côté main thread
-    // sont déjà genre-aware, mais on re-pondère ici pour le threshold)
-    const flux = (bandFluxes[b] || 0);
-    const s    = states[b];
+    const flux = bandFluxes[b] || 0;
+    const s = states[b];
     const rise = Math.max(0, flux - s.prev);
     s.prev = flux;
-    s.floorSlow = floorDecay * s.floorSlow + (1 - floorDecay) * rise;
+
+    // Floor decay spécifique par bande
+    const decay = floorDecays[b];
+    s.floorSlow = decay * s.floorSlow + (1 - decay) * rise;
+
     const threshold = Math.max(s.floorSlow * s.k, 0.006);
+
     if (rise > threshold && time - s.lastOnsetTime > 130) {
       const interval = s.onsets.length ? time - s.onsets.at(-1).time : null;
       s.onsets.push({ time, interval });
       if (s.onsets.length > 120) s.onsets.shift();
+
       self.postMessage({
-        type: 'onset', band: b, time: time,
+        type: 'onset',
+        band: b,
+        time: time,
         strength: rise / (s.floorSlow || 1),
-        kUsed: s.k, interval: interval
+        kUsed: s.k,
+        interval: interval
       });
       s.lastOnsetTime = time;
     }
   }
 }
+
 
 function runCalibration() {
   for (let b = 0; b < BANDS.length; b++) {
@@ -959,22 +1101,49 @@ function setGenre(genre) {
   // Update UI buttons
   document.getElementById('genre-electro').classList.toggle('active', genre === 'electro');
   document.getElementById('genre-rock').classList.toggle('active', genre === 'rock');
+  document.getElementById('genre-acoustic').classList.toggle('active', genre === 'acoustic');
 
   // Update hint text
   const hints = {
-    electro: 'Réponse plate — optimisé kick & basses propres',
-    rock:    'Boost graves +8dB · Coupe aigus -14dB · floorSlow réactif'
+    electro:  'Réponse plate — optimisé kick & basses propres',
+    rock:     'Boost graves +8dB · Coupe aigus -14dB · floorSlow réactif',
+    acoustic: 'Boost présence 4kHz +6dB · EQ MID/HIGH · transitoires cordes & piano'
   };
   document.getElementById('genre-hint').textContent = hints[genre];
 
   // Si une session est active, on met à jour les filtres en temps réel
-  if (running && filterLowShelf && filterHighShelf) {
-    filterLowShelf.gain.value  = (genre === 'rock') ? 8   : 0;
-    filterHighShelf.gain.value = (genre === 'rock') ? -14 : 0;
+  if (running && filterLowShelf && filterHighShelf && filterBandpass) {
+    _applyGenreFilters(genre);
   }
 
   // Notifier le Worker du nouveau genre
   if (bpmWorker) bpmWorker.postMessage({ type: 'setGenre', genre });
+}
+
+// Applique la configuration de filtres selon le genre
+function _applyGenreFilters(genre) {
+  if (genre === 'electro') {
+    filterBandpass.frequency.value = 4000;
+    filterBandpass.Q.value         = 0.9;
+    filterBandpass.gain.value      = 0;   // peaking à gain=0 = totalement transparent
+    filterLowShelf.gain.value      = 0;
+    filterHighShelf.gain.value     = 0;
+  } else if (genre === 'rock') {
+    filterBandpass.frequency.value = 4000;
+    filterBandpass.Q.value         = 0.9;
+    filterBandpass.gain.value      = 0;   // transparent en rock
+    filterLowShelf.gain.value      = 8;
+    filterHighShelf.gain.value     = -14;
+  } else if (genre === 'acoustic') {
+    // Acoustic : on veut capter les transitoires larges (cordes, piano, voix, cajon)
+    // → filtre bandpass transparent (Q très bas = passe-tout), on laisse l'EQ faire le travail
+    filterBandpass.type            = 'peaking';  // peaking = boost sans couper les extrêmes
+    filterBandpass.frequency.value = 4000;       // zone de présence / attaque des cordes
+    filterBandpass.Q.value         = 0.9;
+    filterBandpass.gain.value      = 6;          // +6dB autour de 4kHz
+    filterLowShelf.gain.value      = -6;         // atténue les graves qui parasitent (pied, salle)
+    filterHighShelf.gain.value     = 8;          // boost des transitoires aigus (plectre, frappe)
+  }
 }
 
 // ============================================================
@@ -1033,22 +1202,32 @@ try {
   analyser = ctx.createAnalyser();
 
   // ── EQ FILTERS ──
-  // Deux BiquadFilter en série entre src et analyser.
-  // En mode ELECTRO : gains à 0 → chaîne transparente, son non altéré.
-  // En mode ROCK    : lowShelf +8dB@120Hz + highShelf -14dB@3kHz
-  //   → renforce kick/basses, atténue distorsion harmonique et cymbales.
+  // Trois BiquadFilter en série entre src et analyser.
+  // filterBandpass : transparent en electro/rock (Q~0), bandpass 3.5kHz en acoustic
+  // filterLowShelf  : boost graves en ROCK (+8dB), atténue en acoustic (-4dB)
+  // filterHighShelf : coupe aigus en ROCK (-14dB), boost en acoustic (+10dB)
+  filterBandpass  = ctx.createBiquadFilter();
+  filterBandpass.type            = 'peaking';   // peaking : transparent à gain=0, actif en acoustic
+  filterBandpass.frequency.value = 4000;
+  filterBandpass.Q.value         = 0.9;
+  filterBandpass.gain.value      = 0;           // neutre par défaut
+
   filterLowShelf  = ctx.createBiquadFilter();
   filterLowShelf.type            = 'lowshelf';
   filterLowShelf.frequency.value = 120;
-  filterLowShelf.gain.value      = (currentGenre === 'rock') ? 8 : 0;
+  filterLowShelf.gain.value      = 0;
 
   filterHighShelf = ctx.createBiquadFilter();
   filterHighShelf.type            = 'highshelf';
   filterHighShelf.frequency.value = 3000;
-  filterHighShelf.gain.value      = (currentGenre === 'rock') ? -14 : 0;
+  filterHighShelf.gain.value      = 0;
 
-  // Chaîne : src → lowShelf → highShelf → analyser
-  src.connect(filterLowShelf);
+  // Applique immédiatement les bons paramètres selon le genre actif
+  _applyGenreFilters(currentGenre);
+
+  // Chaîne : src → bandpass → lowShelf → highShelf → analyser
+  src.connect(filterBandpass);
+  filterBandpass.connect(filterLowShelf);
   filterLowShelf.connect(filterHighShelf);
   filterHighShelf.connect(analyser);
 
@@ -1339,9 +1518,9 @@ function renderMusic() {
 // ============================================================
 // DEBUG
 // ============================================================
-function toggleDebug() {
-  debugVisible = !debugVisible;
-  dbgPanel.classList.toggle('visible', debugVisible);
+function toggleSettings() {
+  const panel = document.getElementById('settings-panel');
+  panel.classList.toggle('visible');
 }
 
 function colorClass(el, val, warnThresh, badThresh) {
@@ -1388,7 +1567,34 @@ function updateDebug(now, rawBpm) {
 // NOVELTY
 // ============================================================
 function calculateNovelty(bandFluxes) {
-  return bandFluxes[0] + bandFluxes[1] + bandFluxes[2] + bandFluxes[3];
+  const [kick, low, mid, high] = bandFluxes;
+
+  if (currentGenre === 'acoustic') {
+    // Acoustic : transitoires portés par MID+HIGH (attaque de cordes, piano, voix, cajon)
+    // On écrase le kick (basses souvent indistinctes en acoustique capté par micro smartphone)
+    let novelty = mid * 2.5 + high * 2.2 + low * 0.9 + kick * 0.4;
+
+    // Bonus si le MID/HIGH dominent nettement (= attaque franche d'un instrument)
+    const acRatio = (mid + high) / (kick + low + 0.001);
+    if (acRatio > 1.5) novelty *= 1.2;
+
+    return novelty;
+  }
+
+  // Poids très orienté percussif
+  let novelty = kick * 2.8 + low * 1.6 + mid * 0.9;
+
+  if (currentGenre === 'rock') {
+    novelty += high * 0.35;           // contribution faible des cymbales
+  } else {
+    novelty += high * 1.1;
+  }
+
+  // Bonus si le kick domine (très utile sur du live)
+  const kickRatio = kick / (low + mid + high + 0.001);
+  if (kickRatio > 0.35) novelty *= 1.25;
+
+  return novelty;
 }
 
 function updateNoveltyBuffer(novelty, now) {
@@ -1439,31 +1645,45 @@ const h = noveltyCanvas.height;
 // PEAK DETECTION — seuil adaptatif + fenêtre ±4 frames
 // ============================================================
 function detectNoveltyPeaks(now) {
-  if (noveltyHistory.length < 10) return;
-  const minInterval = 200;
+  if (noveltyHistory.length < 15) return;
+
+  const minInterval = currentGenre === 'rock' ? 240 : currentGenre === 'acoustic' ? 280 : 200;
+
   const vals = noveltyHistory.map(p => p.value);
   const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
   const std  = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
-  const adaptiveThreshold = mean + 1.2 * std;
-  const WIN = 4;
+
+  // Acoustic : seuil plus permissif (transitoires plus discrets que kick électronique)
+  const adaptiveThreshold = currentGenre === 'rock'
+    ? mean + 1.35 * std
+    : currentGenre === 'acoustic'
+      ? mean + 0.9 * std
+      : mean + 1.1 * std;
+
+  const WIN = currentGenre === 'rock' ? 5 : currentGenre === 'acoustic' ? 6 : 4;
+
   for (let i = WIN; i < noveltyHistory.length - WIN; i++) {
     const curr = noveltyHistory[i];
     if (curr.time <= noveltyLastPeakTime) continue;
+
     let isMax = true;
     for (let k = 1; k <= WIN; k++) {
-      if (noveltyHistory[i - k].value >= curr.value ||
-          noveltyHistory[i + k].value >= curr.value) {
-        isMax = false; break;
+      if (noveltyHistory[i - k].value >= curr.value + 0.001 ||
+          noveltyHistory[i + k].value >= curr.value + 0.001) {
+        isMax = false;
+        break;
       }
     }
+
     if (isMax && curr.value > adaptiveThreshold) {
-      if (noveltyBeatTimes.length === 0 ||
-          curr.time - noveltyBeatTimes.at(-1) > minInterval) {
+      const lastBeatTime = noveltyBeatTimes.length ? noveltyBeatTimes.at(-1) : 0;
+      if (curr.time - lastBeatTime > minInterval) {
         noveltyBeatTimes.push(curr.time);
-        if (noveltyBeatTimes.length > 32) noveltyBeatTimes.shift();
+        if (noveltyBeatTimes.length > 40) noveltyBeatTimes.shift();
       }
     }
   }
+
   if (noveltyHistory.length > WIN + 1) {
     noveltyLastPeakTime = noveltyHistory[noveltyHistory.length - WIN - 1].time;
   }
@@ -1525,9 +1745,11 @@ function computeNoveltyBPM() {
     }
   }
 
+  // Lissage adaptatif : acoustic plus réactif (tempo moins régulier → moins de mémoire)
+  const alpha = currentGenre === 'acoustic' ? 0.35 : 0.20;
   noveltySmoothedBpm = noveltySmoothedBpm === null
     ? bpm
-    : 0.80 * noveltySmoothedBpm + 0.20 * bpm;
+    : (1 - alpha) * noveltySmoothedBpm + alpha * bpm;
 
   return Math.round(noveltySmoothedBpm);
 }
@@ -1546,6 +1768,8 @@ function setUIState(s) {
 // ============================================================
 function toggleTheme(isLight) {
   document.body.classList.toggle('light', isLight);
+  // Synchronise la StatusBar Android avec la couleur de fond du thème actif
+  majStatusBar(isLight ? '#e8eaf0' : '#1e2228');
   // Redraw canvases with new theme colors
   drawNoveltyCurve();
   drawBpmHistory();
@@ -1696,6 +1920,77 @@ function median(a) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CAPACITOR — StatusBar · Orientation · Back Button
+// ═══════════════════════════════════════════════════════════════
+
+// ── STATUS BAR ──
+// Met à jour la couleur de fond de la barre Android.
+// Appelé au démarrage et à chaque changement de thème.
+function majStatusBar(hexColor) {
+  if (window.Capacitor?.Plugins?.StatusBar) {
+    try {
+      const { StatusBar } = window.Capacitor.Plugins;
+      StatusBar.setBackgroundColor({ color: hexColor });
+      StatusBar.setStyle({ style: 'DARK' }); // icônes claires sur fond sombre
+    } catch (e) {
+      console.warn('[StatusBar] Erreur:', e);
+    }
+  }
+}
+
+// ── ORIENTATION + DEVICE TYPE ──
+// Téléphone → portrait verrouillé.
+// Tablette → landscape verrouillé (cohérent avec KanaDrop).
+async function initDeviceAndOrientation() {
+  let deviceType = 'phone'; // fallback
+
+  const smallSide = Math.min(screen.width, screen.height);
+  if (smallSide >= 600) deviceType = 'tablet';
+
+  if (window.Capacitor?.Plugins?.Device) {
+    try {
+      const info = await window.Capacitor.Plugins.Device.getInfo();
+      deviceType = info.deviceType === 'tablet' ? 'tablet' : 'phone';
+    } catch (e) {
+      console.warn('[Device] Fallback screen-size utilisé:', e);
+    }
+  }
+
+  window.DEVICE_TYPE = deviceType;
+  document.body.classList.add('device-' + deviceType);
+
+  if (window.Capacitor?.Plugins?.ScreenOrientation) {
+    try {
+      await window.Capacitor.Plugins.ScreenOrientation.lock({ orientation: 'portrait' });
+      console.log('[Orientation] Verrouillé en mode: portrait');
+    } catch (e) {
+      console.warn('[ScreenOrientation] Échec verrouillage:', e);
+    }
+  }
+}
+
+// ── BACK BUTTON ANDROID ──
+// Puisque l'app n'a pas de système de navigation multi-écrans,
+// le bouton retour demande simplement une confirmation de sortie.
+window.addEventListener('load', () => {
+  if (!window.Capacitor?.Plugins?.App) return;
+  const { App } = window.Capacitor.Plugins;
+
+  App.addListener('backButton', () => {
+    if (confirm('Quitter BPM Detector ?')) {
+      // Arrêter le micro proprement avant de quitter
+      if (running) toggle();
+      App.exitApp();
+    }
+  });
+});
+
+// ── INIT ──
+// Applique immédiatement la couleur de fond du thème par défaut (light).
+majStatusBar('#e8eaf0');
+initDeviceAndOrientation();
 </script>
+
 </body>
 </html>
