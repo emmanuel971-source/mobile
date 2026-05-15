@@ -26,62 +26,44 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* ── DARK THEME — Gunmetal / Aluminium Brossé ── */
-  --rack-bg:    #15171a; /* Fond de page très sombre pour faire ressortir le rack */
-  --face:       #343842; /* Base métallique plus claire */
-  --deep:       #24272e;
-  --inset:      #1a1c22;
-  --mid:        #4e5462;
-  --hi:         rgba(255,255,255,0.20); /* Highlights renforcés */
-  --lo:         rgba(0,0,0,0.70);
+  /* ── DARK THEME — Aluminium brossé ── */
+  --rack-bg:    #2c2f36;
+  --face:       #3a3d46;
+  --deep:       #31343c;
+  --inset:      #292c33;
+  --mid:        #4a4f5e;
+  --hi:         rgba(255,255,255,0.18);
+  --lo:         rgba(0,0,0,0.40);
 
-  /* Textures et Reflets du Rack */
-  --metal-base: linear-gradient(180deg, #3c414d 0%, #2b2f38 100%);
-  --metal-shine: linear-gradient(105deg, 
-    rgba(255,255,255,0) 0%, 
-    rgba(255,255,255,0.02) 25%, 
-    rgba(255,255,255,0.12) 45%, 
-    rgba(255,255,255,0) 52%, 
-    rgba(255,255,255,0) 100%
-  );
-  --metal-brushed: repeating-linear-gradient(
-    90deg, 
-    rgba(0,0,0,0.05) 0px, 
-    rgba(0,0,0,0.05) 1px, 
-    transparent 1px, 
-    transparent 2px
-  );
-
-  /* Le reste de tes couleurs (Gold, Ice, Mint, Red, etc.) reste inchangé... */
   --gold:       #f0a030;
-  --gold-glow:  rgba(240,160,48,0.40);
+  --gold-glow:  rgba(240,160,48,0.45);
   --gold-dim:   #3d2808;
 
   --ice:        #5dbbf5;
-  --ice-glow:   rgba(93,187,245,0.30);
+  --ice-glow:   rgba(93,187,245,0.35);
 
   --mint:       #00e5a0;
   --mint-dim:   #032e1e;
-  --mint-glow:  rgba(0,229,160,0.35);
+  --mint-glow:  rgba(0,229,160,0.40);
 
   --locked-color:      #00e5a0;
-  --locked-glow:       rgba(0,229,160,0.35);
-  --locked-bg:         rgba(0,229,160,0.10);
+  --locked-glow:       rgba(0,229,160,0.40);
+  --locked-bg:         rgba(0,229,160,0.12);
   --novelty-color:     #39ff8a;
   --novelty-shadow:    #39ff8a;
 
   --red:        #ff4d5e;
   --red-dim:    #2d040a;
 
-  --label:      #d8e0ee;
-  --label-sub:  #8796b0; /* Légèrement éclairci pour lisibilité sur le métal */
-  --label-dim:  #4f586c;
+  --label:      #e8ecf4;
+  --label-sub:  #909bb5;
+  --label-dim:  #555f78;
 
-  --header-grad-top: #363b45;
-  --header-grad-bot: #22262d;
-  --footer-grad-top: #22262d;
-  --footer-grad-bot: #1a1d22;
-  --bpm-scanline: rgba(0,0,0,0.18);
+  --header-grad-top: #4e535f;
+  --header-grad-bot: #30343e;
+  --footer-grad-top: #2e3139;
+  --footer-grad-bot: #272a31;
+  --bpm-scanline: rgba(0,0,0,0.08);
 }
 
 /* ── LIGHT THEME ── */
@@ -143,16 +125,16 @@ html, body {
 .rack {
   width: 100%;
   max-width: 100%;
-  background: var(--metal-base); /* Utilise la nouvelle base dégradée */
+  background: var(--face);
   display: flex;
   flex-direction: column;
   box-shadow:
-    0 24px 64px rgba(0,0,0,0.95),
-    0  0   0 1px rgba(255,255,255,0.06); /* Liseré clair autour de la coque */
+    0 24px 64px rgba(0,0,0,0.90),
+    0  0   0 1px rgba(255,255,255,0.04);
   position: relative;
 }
 
-/* Texture et reflet (uniquement en dark mode) */
+/* Reflet aluminium brossé en mode dark — shiny sur les hauts, sombre en bas */
 body:not(.light) .rack::after {
   content: '';
   position: absolute;
@@ -160,11 +142,21 @@ body:not(.light) .rack::after {
   pointer-events: none;
   z-index: 0;
   background:
-    var(--metal-shine),    /* Couche de brillance */
-    var(--metal-brushed);  /* Couche de rayures métalliques */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.000) 0px,
+      rgba(255,255,255,0.012) 1px,
+      rgba(255,255,255,0.000) 2px,
+      rgba(255,255,255,0.000) 6px
+    ),
+    linear-gradient(
+      160deg,
+      rgba(255,255,255,0.14) 0%,
+      rgba(255,255,255,0.06) 25%,
+      transparent 55%,
+      rgba(0,0,0,0.10) 100%
+    );
 }
-
-/* On s'assure que le contenu reste au-dessus du vernis */
 body:not(.light) .rack > * { position: relative; z-index: 1; }
 
 /* Chrome shelf separator on each section */
@@ -232,16 +224,18 @@ body:not(.light) .rack > * { position: relative; z-index: 1; }
   box-shadow: 0 0 8px var(--mint), 0 0 20px var(--mint-glow);
 }
 
-/* Reflet métallique horizontal sur l'header en mode nuit */
+/* Header aluminium brossé en mode dark — reflet shiny franc en haut */
 body:not(.light) .rack-header {
   background: linear-gradient(180deg,
-    #353a44 0%,
-    #272c34 40%,
-    #1e2228 100%
+    #636874 0%,
+    #4e535f 30%,
+    #3c4049 70%,
+    #30343e 100%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 2px 4px rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
     0 2px 8px rgba(0,0,0,0.40);
 }
 .bpm-section {
@@ -390,8 +384,9 @@ body:not(.light) .rack-header {
 }
 .genre-3way-btn {
   flex: 1;
-  padding: 14px 6px; /* Plus d'espace vertical sans les icônes */
+  padding: 12px 6px;
   font-family: 'Rajdhani', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
   background: transparent;
   border: none;
   color: var(--label-dim);
@@ -400,17 +395,10 @@ body:not(.light) .rack-header {
   -webkit-tap-highlight-color: transparent;
   position: relative;
   z-index: 1;
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
 }
-.genre-3way-btn .g3-icon { font-size: 15px; line-height: 1; }
-.genre-3way-btn .g3-label { 
-  font-size: 13px; /* Typo plus grande */
-  font-weight: 700;
-  letter-spacing: 3px; 
-}
+.genre-3way-btn .g3-icon { display: none; }
+.genre-3way-btn .g3-label { font-size: 11px; letter-spacing: 2px; line-height: 1; }
 .genre-3way-btn + .genre-3way-btn {
   border-left: 1px solid var(--mid);
 }
@@ -564,8 +552,32 @@ body:not(.light) .rack-header {
   height: 56px;
 }
 
-/* ── BUTTONS ── */
-.btn-panel {
+/* Effets métalliques supplémentaires en mode dark */
+body:not(.light) .btn-panel {
+  background: linear-gradient(180deg,
+    #424650 0%,
+    #383c45 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.20),
+    inset 0 -1px 0 rgba(0,0,0,0.25);
+}
+body:not(.light) .rack-footer {
+  background: linear-gradient(180deg,
+    #32363f 0%,
+    #292c34 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+body:not(.light) .bpm-section {
+  background: #272b33;
+  box-shadow:
+    inset 0 3px 14px rgba(0,0,0,0.55),
+    inset 0 0 40px rgba(0,0,0,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+}
+
+
   padding: 14px 16px;
   display: flex; gap: 10px; align-items: center;
   background: var(--face);
@@ -674,8 +686,97 @@ body:not(.light) .rack-header {
   display: flex; justify-content: space-between;
 }
 .rack-footer span { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--label-dim); }
+/* ── MIC ACCESS OVERLAY ── */
+.mic-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+.mic-overlay.visible { display: flex; }
+.mic-overlay-box {
+  background: var(--face);
+  border: 1px solid var(--mid);
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 340px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow:
+    0 0 0 1px var(--hi),
+    0 32px 64px rgba(0,0,0,0.70);
+}
+body:not(.light) .mic-overlay-box {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 32px 64px rgba(0,0,0,0.80);
+}
+.mic-overlay-icon {
+  font-size: 42px;
+  filter: grayscale(0.3);
+}
+.mic-overlay-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--red);
+  text-align: center;
+}
+.mic-overlay-msg {
+  font-size: 12px; font-weight: 500;
+  color: var(--label-sub);
+  text-align: center;
+  line-height: 1.55;
+  letter-spacing: 0.3px;
+}
+.mic-overlay-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  background: var(--inset);
+  border: 1px solid var(--mid);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.mic-step {
+  font-size: 11px; font-weight: 600;
+  color: var(--label);
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+.mic-retry-btn {
+  width: 100%;
+  padding: 15px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 4px;
+  border-radius: 8px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(0,229,160,0.20) 0%, rgba(0,229,160,0.08) 100%);
+  color: var(--mint);
+  border: 1px solid rgba(0,229,160,0.40);
+  box-shadow: 0 0 18px rgba(0,229,160,0.12), inset 0 1px 0 rgba(0,229,160,0.22);
+  -webkit-tap-highlight-color: transparent;
+}
+.mic-retry-btn:active { opacity: 0.8; transform: translateY(1px); }
+.mic-dismiss-btn {
+  background: transparent;
+  border: none;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px; font-weight: 700; letter-spacing: 3px;
+  color: var(--label-dim);
+  cursor: pointer;
+  padding: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
 </style>
-</head>
 <body class="light">
 
 <div class="rack">
@@ -720,17 +821,18 @@ body:not(.light) .rack-header {
       <button class="settings-close-btn" onclick="toggleSettings()">FERMER</button>
     </div>
     <div class="genre-switch-wrap">
-      <div class="settings-row-label">GENRE FILTER</div><div class="genre-3way">
-  <button class="genre-3way-btn active" id="genre-electro" data-genre="electro" onclick="setGenre('electro')">
-    <span class="g3-label">ELECTRO</span>
-  </button>
-  <button class="genre-3way-btn" id="genre-rock" data-genre="rock" onclick="setGenre('rock')">
-    <span class="g3-label">ROCK</span>
-  </button>
-  <button class="genre-3way-btn" id="genre-acoustic" data-genre="acoustic" onclick="setGenre('acoustic')">
-    <span class="g3-label">ACOUSTIC</span>
-  </button>
-</div>
+      <div class="settings-row-label">GENRE FILTER</div>
+      <div class="genre-3way">
+        <button class="genre-3way-btn active" id="genre-electro" data-genre="electro" onclick="setGenre('electro')">
+          <span class="g3-label">ELECTRO / EDM</span>
+        </button>
+        <button class="genre-3way-btn" id="genre-rock" data-genre="rock" onclick="setGenre('rock')">
+          <span class="g3-label">ROCK / LIVE</span>
+        </button>
+        <button class="genre-3way-btn" id="genre-acoustic" data-genre="acoustic" onclick="setGenre('acoustic')">
+          <span class="g3-label">ACOUSTIC</span>
+        </button>
+      </div>
       <div class="genre-hint-settings" id="genre-hint">Réponse plate — optimisé kick & basses propres</div>
     </div>
   </div>
@@ -803,6 +905,21 @@ body:not(.light) .rack-header {
     <span>v10.1</span>
   </div>
 
+</div>
+
+<!-- OVERLAY MICRO REFUSÉ -->
+<div class="mic-overlay" id="mic-overlay">
+  <div class="mic-overlay-box">
+    <div class="mic-overlay-icon">🎙</div>
+    <div class="mic-overlay-title">ACCÈS MICRO REQUIS</div>
+    <div class="mic-overlay-msg">L'accès au microphone a été refusé ou bloqué. BPM Detector ne peut pas fonctionner sans lui.</div>
+    <div class="mic-overlay-steps">
+      <div class="mic-step">① Autoriser le micro dans les paramètres de votre navigateur ou de l'app</div>
+      <div class="mic-step">② Puis appuyez sur "Réessayer" ci-dessous</div>
+    </div>
+    <button class="mic-retry-btn" onclick="retryMic()">▶  RÉESSAYER</button>
+    <button class="mic-dismiss-btn" onclick="dismissMicOverlay()">FERMER</button>
+  </div>
 </div>
 
 <script>
@@ -1114,6 +1231,7 @@ function getGenreWeight(bandIdx) {
 
 function setGenre(genre) {
   currentGenre = genre;
+  localStorage.setItem('bpm_genre', genre);
 
   // Update UI buttons
   document.getElementById('genre-electro').classList.toggle('active', genre === 'electro');
@@ -1209,9 +1327,12 @@ try {
 
   stream = await navigator.mediaDevices.getUserMedia(constraints);
 } catch (err) {
-    const msg = err.name === 'NotAllowedError' ? 'ACCÈS MICRO REFUSÉ' : 'ERREUR : ' + err.message;
-    bpmEl.textContent = '!';
-    bpmEl.title = msg;
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      showMicOverlay();
+    } else {
+      bpmEl.textContent = '!';
+      bpmEl.title = 'ERREUR : ' + err.message;
+    }
     setUIState('silence');
     return;
   }
@@ -1540,6 +1661,22 @@ function toggleSettings() {
   panel.classList.toggle('visible');
 }
 
+// ============================================================
+// MICRO ACCESS OVERLAY
+// ============================================================
+function showMicOverlay() {
+  document.getElementById('mic-overlay').classList.add('visible');
+  bpmEl.textContent = '--';
+}
+function dismissMicOverlay() {
+  document.getElementById('mic-overlay').classList.remove('visible');
+}
+function retryMic() {
+  dismissMicOverlay();
+  // Petit délai pour laisser l'overlay se fermer avant de relancer
+  setTimeout(() => toggle(), 150);
+}
+
 function colorClass(el, val, warnThresh, badThresh) {
   el.classList.remove('warn', 'bad');
   if (val >= badThresh)  el.classList.add('bad');
@@ -1785,9 +1922,8 @@ function setUIState(s) {
 // ============================================================
 function toggleTheme(isLight) {
   document.body.classList.toggle('light', isLight);
-  // Synchronise la StatusBar Android avec la couleur de fond du thème actif
-  majStatusBar(isLight ? '#e8eaf0' : '#1e2228');
-  // Redraw canvases with new theme colors
+  localStorage.setItem('bpm_theme', isLight ? 'light' : 'dark');
+  majStatusBar(isLight ? '#e8eaf0' : '#3a3d46');
   drawNoveltyCurve();
   drawBpmHistory();
 }
@@ -2004,8 +2140,34 @@ window.addEventListener('load', () => {
 });
 
 // ── INIT ──
-// Applique immédiatement la couleur de fond du thème par défaut (light).
-majStatusBar('#e8eaf0');
+// Restaurer thème et genre depuis localStorage
+(function restorePrefs() {
+  const savedTheme = localStorage.getItem('bpm_theme');
+  const savedGenre = localStorage.getItem('bpm_genre');
+
+  const isLight = savedTheme !== 'dark'; // light par défaut si rien sauvegardé
+  document.body.classList.toggle('light', isLight);
+  const chk = document.getElementById('theme-chk');
+  if (chk) chk.checked = isLight;
+  majStatusBar(isLight ? '#e8eaf0' : '#3a3d46');
+
+  if (savedGenre && ['electro', 'rock', 'acoustic'].includes(savedGenre)) {
+    // On appelle setGenre après que le DOM est prêt — les boutons existent déjà
+    currentGenre = savedGenre;
+    ['electro', 'rock', 'acoustic'].forEach(g => {
+      const btn = document.getElementById('genre-' + g);
+      if (btn) btn.classList.toggle('active', g === savedGenre);
+    });
+    const hints = {
+      electro:  'Réponse plate — optimisé kick & basses propres',
+      rock:     'Boost graves +8dB · Coupe aigus -14dB · floorSlow réactif',
+      acoustic: 'Boost présence 4kHz +6dB · EQ MID/HIGH · transitoires cordes & piano'
+    };
+    const hintEl = document.getElementById('genre-hint');
+    if (hintEl) hintEl.textContent = hints[savedGenre];
+  }
+})();
+
 initDeviceAndOrientation();
 </script>
 
